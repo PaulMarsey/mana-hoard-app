@@ -1,8 +1,0 @@
-[{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "uk.co.manahoard.app",
-    "sha256_cert_fingerprints": ["84:A6:7A:ED:82:AC:AC:19:56:67:71:9A:28:64:1C:09:EA:B8:90:BE:B2:48:08:39:A7:7F:DA:A9:1D:96:9A:DB"]
-  }
-}]

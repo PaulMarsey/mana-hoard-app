@@ -59,5 +59,7 @@ assert.equal(repo.items.find(i => i.id === 'msh-4').qty, before.a - 1); assert.e
 r = await call('/webhook', event, { 'Stripe-Signature': await sign(event) }); d = await r.json();
 assert.equal(d.stock, 'already applied'); assert.equal(repo.items.find(i => i.id === 'msh-4').qty, before.a - 1);
 console.log(`✓ paid order reduces stock in the repo (Mjölnir ${before.a}→${before.a - 1}, msh-12 ${before.b}→${Math.max(0, before.b - 2)}) and a retried webhook isn't applied twice`);
+r = await call('/checkout', { items: [{ id: 'msh-4', qty: 1 }], ref: 'MH-APP1', app: true }); assert.equal(r.status, 200);
+assert.match(lastSession.get('success_url'), /\?paid=\{CHECKOUT_SESSION_ID\}&app=1#thanks$/); console.log('✓ checkout from the Android app returns via the app');
 r = await call('/health', null, {}, 'GET'); d = await r.json(); assert.equal(d.live, false); console.log('✓ health check reports test mode');
 console.log('All checkout worker tests passed.');

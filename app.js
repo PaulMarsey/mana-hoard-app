@@ -8,6 +8,7 @@ const CONFIG={
   cardImages:true                         // show Scryfall card images (false = drawn card frames only)
 };
 /* ============================================================== */
+const IN_APP=/ManaHoardApp\//.test(navigator.userAgent)&&!!window.ManaHoardApp; // running inside the Android app
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const gbp=p=>'£'+(Math.max(0,p||0)/100).toFixed(2);
@@ -411,7 +412,7 @@ async function startCheckout(btn){
   const n=$('#bnote');if(n)store.set('mh-note',n.value);
   const label=btn.innerHTML;btn.disabled=true;btn.textContent='Opening secure checkout…';
   try{
-    const r=await fetch(CONFIG.checkoutUrl.replace(/\/+$/,'')+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:basket.map(b=>({id:b.id,qty:b.qty})),ref:orderRef(),note:store.get('mh-note','')})});
+    const r=await fetch(CONFIG.checkoutUrl.replace(/\/+$/,'')+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:basket.map(b=>({id:b.id,qty:b.qty})),ref:orderRef(),note:store.get('mh-note',''),app:IN_APP})});
     const d=await r.json().catch(()=>({}));
     if(r.ok&&typeof d.url==='string'&&/^https:\/\/checkout\.stripe\.com\//.test(d.url)){store.set('mh-paying',orderRef());location.href=d.url;return}
     if(r.status===409&&Array.isArray(d.problems)){
@@ -421,12 +422,13 @@ async function startCheckout(btn){
     }else toast((d&&d.error)||'Checkout couldn’t open just now. Please try again, or email your order.');
   }catch{toast('Couldn’t reach the secure checkout. Please try again, or email your order.')}
   btn.disabled=false;btn.innerHTML=label}
-let paidRef=null;
+let paidRef=null,paidSession='',paidFromApp=false;
 function pThanks(){
   return `<section class="band wrap sheetwrap"><article class="sheet thanks"><header class="shead">${sheetLogo}<div><h2>${paidRef?'Payment received':'Thank you'}</h2><p>${paidRef?`Order <b>${esc(paidRef)}</b><br>`:''}${today()}</p></div></header>
    <p class="sthanks" style="margin-top:0">Your treasures are safe in the hoard!</p>
    <p class="snote">${paidRef?'Stripe has emailed your receipt. We\u2019ll check every card, pack your order by hand and email you when it\u2019s on its way.':'If you\u2019ve just paid, your receipt is on its way from Stripe by email.'} Questions? Email ${esc(CONFIG.shopEmail)}${paidRef?` quoting ${esc(paidRef)}`:''}.</p>
-   <div class="row noprint" style="justify-content:center;margin-top:18px"><a class="btn gold" href="#shop">Back to the Hoard</a></div></article></section>`}
+   <div class="row noprint" style="justify-content:center;margin-top:18px">${paidFromApp&&!IN_APP?`<a class="btn gold" id="backToApp" href="${esc(appReturnUrl())}">Back to the Mana Hoard app</a>`:'<a class="btn gold" href="#shop">Back to the Hoard</a>'}</div></article></section>`}
+const appReturnUrl=()=>`intent://paid?session=${encodeURIComponent(paidSession)}#Intent;scheme=manahoard;package=uk.co.manahoard.app;end`;
 function orderRef(){let r=store.get('mh-ref','');if(!r){r='MH-'+Date.now().toString(36).toUpperCase().slice(-6);store.set('mh-ref',r)}return r}
 
 /* ---------- manager: collections ---------- */
@@ -580,7 +582,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.dataset.bq){const b=basket.find(x=>x.id===t.dataset.bq);if(b){b.qty+=+t.dataset.d;if(b.qty<=0)basket=basket.filter(x=>x!==b);store.set('mh-basket',basket);renderBasket()}return}
   if(t.id==='sendReq'){sendRequest();return}
   if(t.id==='payNow'){startCheckout(t);return}
-  if(t.id==='printSheet'){try{window.print()}catch{toast('Use your browser’s Print option to save it as a PDF')}return}
+  if(t.id==='printSheet'){try{if(IN_APP&&window.ManaHoardApp.print)window.ManaHoardApp.print(document.querySelector('.sheet h2')?.textContent||'Mana Hoard');else window.print()}catch{toast('Use your browser’s Print option to save it as a PDF')}return}
   if(t.id==='addCol'){S.settings.collections.push(colNorm({name:'New collection',hue:Math.floor(Math.random()*360)}));markDirty();render(false);const all=document.querySelectorAll('.colcard');all[all.length-1]?.scrollIntoView({block:'center'});return}
   if(t.dataset.colmove){const id=t.closest('[data-col]').dataset.col,a=S.settings.collections,i=a.findIndex(c=>c.id===id),j=i+(+t.dataset.colmove);if(j>=0&&j<a.length){[a[i],a[j]]=[a[j],a[i]];markDirty();render(false)}return}
   if(t.hasAttribute('data-coldel')){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to remove';return}const id=t.closest('[data-col]').dataset.col;S.settings.collections=S.settings.collections.filter(c=>c.id!==id);markDirty();render(false);return}
@@ -669,6 +671,7 @@ async function boot(){
   S.loaded=true;render(false);renderBasket()}
 {const msg=CONFIG.demoBanner??(CONFIG.checkoutUrl?'Secure checkout by Stripe: pay by card, Apple Pay or Google Pay.':'Orders are confirmed by email. No payment is taken on this site yet.');if(msg)$('#demo').textContent=msg;else $('#demo').remove()}
 $('#femail').textContent=CONFIG.shopEmail;
-try{const q=new URLSearchParams(location.search);if(q.get('paid')){paidRef=store.get('mh-paying','')||store.get('mh-ref','')||'your order';basket=[];['mh-basket','mh-ref','mh-note','mh-paying'].forEach(k=>{try{localStorage.removeItem(k)}catch{}});history.replaceState(null,'',location.pathname+'#thanks')}}catch{}
+try{const q=new URLSearchParams(location.search);if(q.get('paid')){paidSession=q.get('paid');paidFromApp=q.get('app')==='1';paidRef=store.get('mh-paying','')||store.get('mh-ref','')||'your order';basket=[];['mh-basket','mh-ref','mh-note','mh-paying'].forEach(k=>{try{localStorage.removeItem(k)}catch{}});history.replaceState(null,'',location.pathname+'#thanks')}}catch{}
 render(false);renderBasket();boot();
+if(paidFromApp&&!IN_APP&&/Android/i.test(navigator.userAgent))setTimeout(()=>{try{location.href=appReturnUrl()}catch{}},900);
 }

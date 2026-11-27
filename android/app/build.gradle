@@ -1,7 +1,8 @@
 plugins { id 'com.android.application' }
 
-// The shop this app opens. Change both if you move to your own domain (e.g. manahoard.co.uk).
+// The shop this app shows. Change these if you move to your own domain (e.g. manahoard.co.uk).
 def shopHost = 'paulmarsey.github.io'
+def shopPath = '/mana-hoard-app'
 def shopUrl  = 'https://paulmarsey.github.io/mana-hoard-app/'
 
 android {
@@ -9,13 +10,16 @@ android {
     compileSdk 35
     defaultConfig {
         applicationId 'uk.co.manahoard.app'
-        minSdk 23
+        minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName '0.1-test'
-        manifestPlaceholders = [shopHost: shopHost, shopUrl: shopUrl]
-        resValue 'string', 'asset_statements', "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], \\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"https://${shopHost}\\\"}}]"
+        versionCode 2
+        versionName '0.2-test'
+        buildConfigField 'String', 'SHOP_URL', "\"${shopUrl}\""
+        buildConfigField 'String', 'SHOP_HOST', "\"${shopHost}\""
+        buildConfigField 'String', 'SHOP_PATH', "\"${shopPath}\""
+        manifestPlaceholders = [shopHost: shopHost, shopPath: shopPath]
     }
+    buildFeatures { buildConfig true }
     // TEST signing key only (committed so each test build installs over the last).
     // Make a private key before publishing to Google Play.
     signingConfigs {
@@ -29,5 +33,5 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.4.0'
+    implementation 'androidx.browser:browser:1.8.0'   // Custom Tabs for Stripe checkout (keeps Google Pay working)
 }

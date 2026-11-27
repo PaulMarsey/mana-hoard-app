@@ -109,7 +109,8 @@ async function createCheckout(req, env) {
       metadata: { ref, note: String(body.note || '').slice(0, 450) },
       payment_intent_data: { metadata: { ref }, description: `Mana Hoard order ${ref}`.trim() },
       submit_type: 'pay',
-      success_url: `${shop}?paid={CHECKOUT_SESSION_ID}#thanks`,
+      // from the Android app, the thank-you page offers a jump back into the app
+      success_url: `${shop}?paid={CHECKOUT_SESSION_ID}${body.app === true ? '&app=1' : ''}#thanks`,
       cancel_url: `${shop}#order`,
     },
   });
