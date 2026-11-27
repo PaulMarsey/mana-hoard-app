@@ -47,11 +47,11 @@ nav.main a[aria-current=page]{background:color-mix(in srgb,var(--forest) 12%,tra
 .hero .btn.ghost{color:#f3ecdb;border-color:#ffffff55}
 .fan{position:relative;height:420px}
 .orb{position:absolute;inset:30px 10% 20px 14%;border-radius:50%;border:1px solid #d8b16d55;box-shadow:inset 0 0 0 30px #ffffff08,inset 0 0 0 62px #ffffff05,0 0 80px #d8b16d22}
-.fan .cart{position:absolute;width:min(220px,44%);top:50%;left:50%;box-shadow:0 26px 50px #0008}
-.fan .cart:nth-child(2){transform:translate(-115%,-46%) rotate(-12deg)}
-.fan .cart:nth-child(3){transform:translate(-50%,-54%) rotate(0deg);z-index:2}
-.fan .cart:nth-child(4){transform:translate(15%,-46%) rotate(12deg)}
-@media (prefers-reduced-motion:no-preference){.fan .cart:nth-child(3){animation:float 6s ease-in-out infinite}}
+.fan>.cart,.fan>.cwrap{position:absolute;width:min(220px,44%);top:50%;left:50%;box-shadow:0 26px 50px #0008;border-radius:4.75%/3.4%}
+.fan>:nth-child(2){transform:translate(-115%,-46%) rotate(-12deg)}
+.fan>:nth-child(3){transform:translate(-50%,-54%) rotate(0deg);z-index:2}
+.fan>:nth-child(4){transform:translate(15%,-46%) rotate(12deg)}
+@media (prefers-reduced-motion:no-preference){.fan>:nth-child(3){animation:float 6s ease-in-out infinite}}
 @keyframes float{50%{transform:translate(-50%,-58%)}}
 .strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
 .strip div{background:var(--paper);padding:16px;text-align:center;color:var(--muted);font-size:15px}
@@ -66,6 +66,13 @@ nav.main a[aria-current=page]{background:color-mix(in srgb,var(--forest) 12%,tra
 .gem.uncommon{background:linear-gradient(135deg,#e9eef2,#8d9aa5)}.gem.rare{background:linear-gradient(135deg,#f6dc8a,#a77d24)}.gem.mythic{background:linear-gradient(135deg,#ffb067,#c2361b)}.gem.special{background:linear-gradient(135deg,#d9b8ff,#6a3fb0)}
 .cart.foil::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,#ffffff40 45%,#9ff3ff30 52%,#ffd6f630 58%,transparent 72%);mix-blend-mode:screen;pointer-events:none}
 .cart.sealed .ill{border-radius:10px}
+/* real card images (Scryfall): shown whole, never cropped or recoloured; drawn frame sits underneath as the fallback */
+.cwrap{position:relative;aspect-ratio:63/88}
+.cwrap>.cart{position:absolute;inset:0}
+.cwrap.loaded>.cart{visibility:hidden}
+.cimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:4.75%/3.4%;display:block}
+.thumb{width:34px;aspect-ratio:63/88;border-radius:2px;object-fit:contain;flex:none;display:block}
+.thumb.none{background:var(--line)}
 /* sections */
 .head{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
 .head a{color:var(--forest);font-weight:700;text-decoration:none}
@@ -115,7 +122,7 @@ dialog::backdrop{background:#0009}
 .dhead,.dfoot{padding:18px 20px;border-bottom:1px solid var(--line)}.dfoot{border-top:1px solid var(--line);border-bottom:0;display:grid;gap:10px}
 .dbody{flex:1;overflow:auto;padding:12px 20px}
 .line{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
-.line .cart{width:48px;padding:3px}.line .cart .tbar,.line .cart .tline,.line .cart .txt{display:none}
+.line .cart,.line .cwrap{width:48px}.line .cart{padding:3px}.line .cart .tbar,.line .cart .tline,.line .cart .txt{display:none}
 .qty{display:flex;align-items:center;gap:4px}
 .qty button{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;cursor:pointer}
 .scrim{position:fixed;inset:0;background:#0007;z-index:45;display:none}.scrim.on{display:block}
@@ -145,6 +152,8 @@ td select{min-height:36px;padding:4px 8px;width:auto}
 footer{background:var(--deep2);color:#d5dccf;margin-top:64px}
 footer .fgrid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:24px;padding-block:40px}
 footer a{color:#f1e7c8;text-decoration:none;display:inline-block;padding:4px 0}
+footer .credits{grid-column:1/-1;opacity:.75;margin:0;border-top:1px solid #ffffff22;padding-top:16px}
+footer .credits a{display:inline;padding:0;text-decoration:underline}
 footer b{color:#fff;font-family:"Cormorant Garamond",serif;font-size:22px}
 @media(max-width:900px){.shop{grid-template-columns:1fr}.filters{position:static}.cats,.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.two{grid-template-columns:1fr}}
 @media(max-width:600px){.hgrid{grid-template-columns:1fr;min-height:0}.fan{height:300px;order:-1}.strip,.tri{grid-template-columns:1fr 1fr}.tri{grid-template-columns:1fr}.dlg{grid-template-columns:1fr}.dlg .cart{max-width:220px;margin:auto}footer .fgrid{grid-template-columns:1fr}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.pcard h3{font-size:18px}nav.main{order:3;width:100%;margin:0;overflow-x:auto;flex-wrap:nowrap}nav.main a{flex:none}}

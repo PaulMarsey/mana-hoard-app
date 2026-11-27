@@ -3,7 +3,8 @@
 const CONFIG={
   shopEmail:'hello@manahoard.co.uk',      // where basket orders and enquiries go
   stockFile:'data/stock.json',            // the published stock the shop reads
-  demoBanner:'Orders are confirmed by email — no payment is taken on this site yet.' // set to '' to hide
+  demoBanner:'Orders are confirmed by email — no payment is taken on this site yet.', // set to '' to hide
+  cardImages:true                         // show Scryfall card images (false = drawn card frames only)
 };
 /* ============================================================== */
 const $=s=>document.querySelector(s);
@@ -44,14 +45,17 @@ const catalogue=()=>{if(!PUB.ok)return {list:DEMO,demo:true};return {list:PUB.it
 const byId=id=>catalogue().list.find(i=>i.id===id);
 const rk=r=>{r=String(r||'').toLowerCase();return r.startsWith('myth')?'mythic':r.startsWith('rare')?'rare':r.startsWith('unc')?'uncommon':r.startsWith('com')?'common':'special'};
 
-function art(l){
+function art(l,big){
   const h=hash(l.set||l.name)%360,sealed=l.cat==='Sealed'||l.cat==='Accessories';
   const glyph=sealed?(l.cat==='Sealed'?'◈':'❖'):['✦','✧','❂','✺','✶','☽'][hash(l.name)%6];
   const foil=isFoil(l.finish||'');
-  return `<div class="cart${foil?' foil':''}${sealed?' sealed':''}" style="--h:${h}" aria-hidden="true">
+  const frame=`<div class="cart${foil?' foil':''}${sealed?' sealed':''}" style="--h:${h}" aria-hidden="true">
   <div class="tbar"><span>${esc(l.name)}</span></div><div class="ill">${glyph}</div>
   <div class="tline"><span>${esc(l.setName||l.set||'')}</span><i class="gem ${rk(l.rarity)}"></i></div>
-  <div class="txt">${esc(CONDS[l.cond]||l.cond||'')} · ${esc(l.finish||'')}${l.num?' · #'+esc(l.num):''}</div></div>`}
+  <div class="txt">${esc(CONDS[l.cond]||l.cond||'')} · ${esc(l.finish||'')}${l.num?' · #'+esc(l.num):''}</div></div>`;
+  const src=CONFIG.cardImages?(big&&sfImg(l.imgL))||sfImg(l.img):'';
+  return src?`<div class="cwrap${foil?' isfoil':''}">${frame}<img class="cimg" src="${esc(src)}" alt="${esc(l.name)}" loading="lazy" decoding="async" referrerpolicy="no-referrer"></div>`:frame}
+const sfImg=u=>typeof u==='string'&&/^https:\/\/[a-z0-9.-]+\.scryfall\.io\//i.test(u)?u:'';
 
 function pcard(l){
   const st=l.qty<=0?'<span class="pill low">Sold out</span>':l.qty<=2?'<span class="pill low">Low stock</span>':'<span class="pill">In stock</span>';
@@ -157,6 +161,7 @@ function mImport(){
     ${p.rows.slice(0,200).map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.set)}</td><td>${esc(r.finish)}</td><td>${esc(r.cond)}</td><td class="n">${r.qty}</td><td class="n">${r.cost?gbp(r.cost):'—'}</td><td class="n">${gbp(r.price)}</td></tr>`).join('')}</tbody></table></div>
     <label class="check" style="margin-top:12px"><input type="checkbox" id="golive"> Put straight into the shop (otherwise they arrive as drafts to check first)</label>
     <label class="check"><input type="checkbox" id="tagcmd"> Tag these as Commander staples</label>
+    <label class="check"><input type="checkbox" id="getimg" checked> Fetch card images from Scryfall</label>
     <div class="row" style="margin-top:10px"><button class="btn gold" id="commit">Add ${p.rows.length} listings to the Hoard</button><button class="btn ghost" id="discard">Discard</button></div>
     <p class="muted small">Prices come from your pricing rules: purchase price plus markup, or a rarity floor when there’s no purchase price. Adjust any of them in Listings.</p>`
    :`<div class="empty"><h3>Nothing read yet</h3><p>Your import preview will appear here, with quantities merged and starting prices worked out.</p></div>`}</div></div>`}
@@ -168,8 +173,9 @@ function mListings(){
   return `<div class="bar"><div class="row"><input type="search" id="mq" placeholder="Search listings" value="${esc(mgr.q)}" style="width:240px">
    <div class="chips">${[['all','All'],['live','Live'],['draft','Drafts'],['out','Sold out']].map(([k,t])=>`<button class="chip" data-mf="${k}" aria-pressed="${mgr.filter===k}">${t}</button>`).join('')}</div></div>
    <div class="row"><button class="btn sm ghost" id="repriceDrafts"${drafts?'':' disabled'}>Re-price drafts by rules</button><button class="btn sm" id="publishAll"${drafts?'':' disabled'}>Publish ${drafts} draft${drafts===1?'':'s'}</button></div></div>
+  ${imgBar()}
   <div class="tbl"><table><thead><tr><th>Card</th><th>Finish</th><th>Cond.</th><th class="n">Qty</th><th class="n">Price £</th><th>Category</th><th>Live</th><th></th></tr></thead><tbody>
-  ${r.slice(0,mgr.shown).map(i=>`<tr data-id="${esc(i.id)}"><td><b>${esc(i.name)}</b><br><span class="muted small">${esc(i.setName||i.set)} ${i.num?'#'+esc(i.num):''} · ${esc(i.lang||'en')}</span></td><td>${esc(i.finish)}</td>
+  ${r.slice(0,mgr.shown).map(i=>`<tr data-id="${esc(i.id)}"><td><div class="row" style="flex-wrap:nowrap;gap:10px">${sfImg(i.img)?`<img class="thumb" src="${esc(i.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:'<span class="thumb none" aria-hidden="true"></span>'}<span><b>${esc(i.name)}</b><br><span class="muted small">${esc(i.setName||i.set)} ${i.num?'#'+esc(i.num):''} · ${esc(i.lang||'en')}${i.imgMiss?' · <span style="color:var(--warn)">no Scryfall match</span>':''}</span></span></div></td><td>${esc(i.finish)}</td>
    <td><select data-f="cond" aria-label="Condition">${Object.keys(CONDS).map(k=>`<option${i.cond===k?' selected':''}>${k}</option>`).join('')}</select></td>
    <td class="n"><input type="number" min="0" step="1" data-f="qty" value="${i.qty}" aria-label="Quantity"></td>
    <td class="n"><input type="number" min="0" step="0.01" data-f="price" value="${(i.price/100).toFixed(2)}" aria-label="Price in pounds"></td>
@@ -235,6 +241,68 @@ function readImport(text){
   const out=[...map.values()].map(l=>({...l,price:priceFor(l)}));
   return {rows:out,raw:rows.length-1,skipped,total:out.reduce((s,l)=>s+l.qty,0)}}
 
+/* ---------- Scryfall ---------- */
+// Only the Hoard Manager calls the API (batches of 75, under Scryfall's 2-per-second limit).
+// Image links are saved into stock.json, so shoppers load images from *.scryfall.io with no API calls.
+const SF={busy:false,done:0,total:0,note:''};
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const isCard=i=>i.cat!=='Sealed'&&i.cat!=='Accessories';
+const needsImg=i=>isCard(i)&&!sfImg(i.img)&&!i.imgMiss;
+const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'');
+const sameName=(card,i)=>{const n=norm(i.name);return norm(card.name)===n||String(card.name||'').split(' // ').some(f=>norm(f)===n)||(card.printed_name&&norm(card.printed_name)===n)};
+const SF_HEAD={'Accept':'application/json;q=0.9,*/*;q=0.8'};
+function primaryIdent(i){if(UUID.test(i.sid||''))return {id:i.sid};if(i.set&&i.num)return {set:i.set.toLowerCase(),collector_number:String(i.num)};return i.set?{name:i.name,set:i.set.toLowerCase()}:{name:i.name}}
+function applyCard(i,c){
+  const u=c.image_uris||(c.card_faces&&c.card_faces[0]&&c.card_faces[0].image_uris)||{};
+  const img=sfImg(u.normal)||sfImg(u.large)||sfImg(u.small);if(!img)return false;
+  i.img=img;const L=sfImg(u.large);if(L)i.imgL=L;else delete i.imgL;
+  if(UUID.test(c.id||''))i.sid=c.id;if(/^https:\/\/scryfall\.com\//.test(c.scryfall_uri||''))i.sfUri=c.scryfall_uri;
+  const artist=c.artist||(c.card_faces&&c.card_faces[0]&&c.card_faces[0].artist);if(artist)i.artist=String(artist).slice(0,80);
+  const tl=c.type_line||(c.card_faces&&c.card_faces[0]&&c.card_faces[0].type_line);if(tl)i.tline=String(tl).slice(0,120);
+  if(!i.setName&&c.set_name)i.setName=String(c.set_name).slice(0,80);
+  if(rk(i.rarity)==='special'&&c.rarity&&c.rarity!=='special')i.rarity=String(c.rarity);
+  delete i.imgMiss;return true}
+async function sfPost(idents){
+  for(let attempt=0;attempt<2;attempt++){
+    const r=await fetch('https://api.scryfall.com/cards/collection',{method:'POST',headers:{...SF_HEAD,'Content-Type':'application/json'},body:JSON.stringify({identifiers:idents})});
+    if(r.status===429){SF.note='Scryfall asked us to slow down — pausing 30 seconds';sfStatus();await sleep(31000);continue}
+    if(!r.ok)throw new Error('Scryfall replied '+r.status);
+    return r.json()}
+  throw new Error('Scryfall is busy — try again in a few minutes')}
+async function sfGetOne(i){ // fallback when a batch request can't be made
+  const id=primaryIdent(i);const url=id.id?`https://api.scryfall.com/cards/${id.id}`:id.collector_number?`https://api.scryfall.com/cards/${encodeURIComponent(id.set)}/${encodeURIComponent(id.collector_number)}`:`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(i.name)}${id.set?'&set='+encodeURIComponent(id.set):''}`;
+  const r=await fetch(url,{headers:SF_HEAD});await sleep(id.collector_number||id.id?120:550);return r.ok?r.json():null}
+async function lookupBatch(batch,mkIdent){
+  const idents=batch.map(mkIdent);const res=await sfPost(idents);const cards=Array.isArray(res.data)?res.data:[];
+  const left=[];
+  for(const i of batch){const id=mkIdent(i);
+    const c=cards.find(c=>id.id?c.id===id.id:id.collector_number?(String(c.set).toLowerCase()===id.set&&String(c.collector_number).toLowerCase()===id.collector_number.toLowerCase()&&sameName(c,i)):(sameName(c,i)&&(!id.set||String(c.set).toLowerCase()===id.set)));
+    if(!(c&&applyCard(i,c)))left.push(i)}
+  return left}
+async function runImages(list){
+  if(SF.busy||!list.length){if(!list.length)toast('Every card already has an image');return}
+  SF.busy=true;SF.done=0;SF.total=list.length;SF.note='';sfStatus();let missed=0,fallback=false;
+  try{
+    for(let k=0;k<list.length;k+=75){
+      const batch=list.slice(k,k+75);let left=batch;
+      if(!fallback){
+        try{left=await lookupBatch(batch,primaryIdent);await sleep(550);
+          const retry=left.filter(i=>i.set&&!UUID.test(i.sid||''));// second chance: name + set, for wrong collector numbers
+          if(retry.length){const still=await lookupBatch(retry,i=>({name:i.name,set:i.set.toLowerCase()}));await sleep(550);left=left.filter(i=>!retry.includes(i)||still.includes(i))}}
+        catch(e){if(e instanceof TypeError){fallback=true;left=batch}else throw e}}
+      if(fallback){left=[];for(const i of batch){const c=await sfGetOne(i).catch(()=>null);if(!(c&&sameName(c,i)&&applyCard(i,c)))left.push(i);SF.done++;sfStatus()}SF.done-=batch.length}
+      left.forEach(i=>{i.imgMiss=true});missed+=left.length;SF.done+=batch.length;sfStatus();markDirty()}
+    toast(`Images added for ${SF.total-missed} card${SF.total-missed===1?'':'s'}${missed?` — ${missed} not found on Scryfall`:''}`)}
+  catch(e){toast(e instanceof TypeError?'Couldn’t reach Scryfall — check your connection and try again':String(e.message||e))}
+  finally{SF.busy=false;SF.note='';markDirty();if(route()==='manager')render(false)}}
+function imgBar(){
+  const cards=S.items.filter(isCard),have=cards.filter(i=>sfImg(i.img)).length,miss=cards.filter(i=>i.imgMiss).length,need=cards.filter(needsImg).length;
+  return `<div class="box row" style="justify-content:space-between;margin-bottom:14px;padding:12px 16px"><span><b>Card images</b> <span class="muted" id="sfstatus">${SF.busy?sfText():`${have} of ${cards.length} cards have a Scryfall image${miss?`, ${miss} not found`:''}`}</span></span>
+   <span class="row"><button class="btn sm" id="sfMissing"${need&&!SF.busy?'':' disabled'}>Fetch missing (${need})</button>${miss?`<button class="btn sm ghost" id="sfRetry"${SF.busy?' disabled':''}>Retry not found</button>`:''}<button class="btn sm ghost" id="sfAll"${cards.length&&!SF.busy?'':' disabled'}>Refresh all</button></span></div>`}
+const sfText=()=>SF.note||`Fetching from Scryfall… ${Math.min(SF.done,SF.total)} of ${SF.total}`;
+function sfStatus(){const e=$('#sfstatus');if(e)e.textContent=sfText();const st=$('#savestate');if(st&&SF.busy)st.textContent=sfText()}
+
 /* ---------- persistence ---------- */
 let saveTimer=null;
 function markDirty(){clearTimeout(saveTimer);saveTimer=setTimeout(save,400);const ss=$('#savestate');if(ss){ss.textContent='Unpublished changes';ss.classList.add('low')}}
@@ -264,9 +332,9 @@ let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on
 async function copy(txt){try{await navigator.clipboard.writeText(txt);return true}catch{return false}}
 function openDrawer(on){$('#drawer').classList.toggle('open',on);$('#scrim').classList.toggle('on',on);$('#drawer').setAttribute('aria-hidden',!on);if(on)renderBasket()}
 function openCard(id){const l=byId(id);if(!l)return;const d=$('#dlg');const inB=(basket.find(b=>b.id===id)||{}).qty||0;
-  d.innerHTML=`<div style="position:relative"><button class="x" data-close aria-label="Close">×</button><div class="dlg"><div>${art(l)}</div><div>
+  d.innerHTML=`<div style="position:relative"><button class="x" data-close aria-label="Close">×</button><div class="dlg"><div>${art(l,true)}${l.artist?`<p class="muted small" style="margin:8px 0 0">Illustrated by ${esc(l.artist)}</p>`:''}${/^https:\/\/scryfall\.com\//.test(l.sfUri||'')?`<p class="small" style="margin:4px 0 0"><a href="${esc(l.sfUri)}" target="_blank" rel="noopener">View on Scryfall ↗</a></p>`:''}</div><div>
    <span class="pill">${esc(l.cat)}</span><h2 style="margin-top:10px">${esc(l.name)}</h2><p class="muted">${esc(l.setName||l.set)}</p>
-   <dl><dt>Set</dt><dd>${esc(l.set)}${l.num?' #'+esc(l.num):''}</dd><dt>Condition</dt><dd>${esc(CONDS[l.cond]||l.cond)}</dd><dt>Finish</dt><dd>${esc(l.finish)}</dd><dt>Rarity</dt><dd style="text-transform:capitalize">${esc(rk(l.rarity))}</dd><dt>Language</dt><dd>${esc((l.lang||'en').toUpperCase())}</dd><dt>In stock</dt><dd>${l.qty}</dd></dl>
+   <dl><dt>Set</dt><dd>${esc(l.set)}${l.num?' #'+esc(l.num):''}</dd><dt>Condition</dt><dd>${esc(CONDS[l.cond]||l.cond)}</dd><dt>Finish</dt><dd>${esc(l.finish)}</dd>${l.tline?`<dt>Type</dt><dd>${esc(l.tline)}</dd>`:''}<dt>Rarity</dt><dd style="text-transform:capitalize">${esc(rk(l.rarity))}</dd><dt>Language</dt><dd>${esc((l.lang||'en').toUpperCase())}</dd><dt>In stock</dt><dd>${l.qty}</dd></dl>
    <p class="price" style="font-size:28px;margin:8px 0 16px">${gbp(l.price)}</p>
    <div class="row"><button class="btn gold" data-add="${esc(l.id)}"${l.qty<=inB?' disabled':''}>${l.qty<=0?'Sold out':l.qty<=inB?'All in your basket':'Add to basket'}</button>${inB?`<span class="muted">${inB} in basket</span>`:''}</div></div></div></div>`;
   d.showModal()}
@@ -297,9 +365,13 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.id==='sample'){$('#paste').value=SAMPLE_CSV;return}
   if(t.id==='parse'){const r=readImport($('#paste').value);if(!r)toast('Paste a CSV with a header row first');else if(r.error)toast(r.error);else{mgr.preview=r;render(false)}return}
   if(t.id==='discard'){mgr.preview=null;render(false);return}
-  if(t.id==='commit'){const live=$('#golive').checked,cmd=$('#tagcmd').checked;let added=0,merged=0;const idx=new Map(S.items.map(i=>[keyOf(i),i]));const now=Date.now();
+  if(t.id==='commit'){const live=$('#golive').checked,cmd=$('#tagcmd').checked,gi=$('#getimg').checked;let added=0,merged=0;const idx=new Map(S.items.map(i=>[keyOf(i),i]));const now=Date.now();
     mgr.preview.rows.forEach((r,n)=>{const ex=idx.get(keyOf(r));if(ex){ex.qty+=r.qty;merged++}else{S.items.push({...r,id:uid(),cat:cmd?'Commander':'Singles',live,added:now+n});added++}});
-    mgr.preview=null;mgr.tab='listings';mgr.filter=live?'all':'draft';markDirty();render(false);toast(`${added} new listings${merged?`, ${merged} topped up`:''}`);return}
+    mgr.preview=null;mgr.tab='listings';mgr.filter=live?'all':'draft';markDirty();render(false);toast(`${added} new listings${merged?`, ${merged} topped up`:''}`);
+    if(gi&&S.items.some(needsImg))runImages(S.items.filter(needsImg));return}
+  if(t.id==='sfMissing'){runImages(S.items.filter(needsImg));return}
+  if(t.id==='sfRetry'){S.items.forEach(i=>{if(i.imgMiss)delete i.imgMiss});runImages(S.items.filter(needsImg));return}
+  if(t.id==='sfAll'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to re-fetch every image';return}S.items.forEach(i=>{if(isCard(i)){delete i.img;delete i.imgL;delete i.imgMiss}});runImages(S.items.filter(needsImg));return}
   if(t.dataset.mf){mgr.filter=t.dataset.mf;mgr.shown=100;render(false);return}
   if(t.id==='mmore'){mgr.shown+=100;render(false);return}
   if(t.id==='publishAll'){let n=0;S.items.forEach(i=>{if(!i.live&&i.qty>0){i.live=true;n++}});markDirty();render(false);toast(`${n} listings are now live`);return}
@@ -319,6 +391,8 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.id==='resetWork'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to confirm';return}S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);save();render(false);toast('Working copy reset to the live shop');return}
 });
 $('#scrim').addEventListener('click',()=>openDrawer(false));
+document.addEventListener('load',e=>{const t=e.target;if(t.classList&&t.classList.contains('cimg'))t.parentElement.classList.add('loaded')},true);
+document.addEventListener('error',e=>{const t=e.target;if(t.classList&&(t.classList.contains('cimg')||t.classList.contains('thumb')))t.remove()},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#drawer').classList.contains('open'))openDrawer(false)});
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')$('#dlg').close()});
 let qt;document.addEventListener('input',e=>{const t=e.target;

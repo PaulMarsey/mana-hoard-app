@@ -59,6 +59,17 @@ Your edits are kept in your browser as a *working copy* until you publish. On an
 
 > The admin page isn't password-protected, but it can't change your live shop. Anyone who opens it only edits a copy in their own browser. Only a commit to `data/stock.json` in your repo changes what customers see.
 
+### Card images (Scryfall)
+Card images come from [Scryfall](https://scryfall.com):
+
+- **When you import**, leave "Fetch card images from Scryfall" ticked. The manager looks each card up in batches of 75, within Scryfall's rate limits, using the Scryfall ID in your ManaBox export. If there's no ID it uses set and collector number, and if that doesn't match it tries name and set.
+- **Listings → Card images** shows how many cards have an image. Use **Fetch missing**, **Retry not found** or **Refresh all** (for example if Scryfall replaces an image).
+- Each card's image link, artist, type line and Scryfall page are saved into `stock.json` when you publish. Shoppers' browsers load images straight from Scryfall's image servers (`cards.scryfall.io`, which has no rate limit) and never call the API.
+- Sealed products and accessories keep the drawn frame. Any card without an image, or whose image fails to load, falls back to the drawn frame automatically.
+- Set `cardImages:false` in `CONFIG` to turn images off.
+
+Scryfall's terms ask that card images aren't cropped, stretched, recoloured or watermarked, and that the artist and copyright line stay visible. The site shows them whole and credits the artist and Scryfall. Keep it that way if you restyle.
+
 ### Selling elsewhere
 **Marketplace export** builds:
 - a **Cardmarket stock sheet** (Cardmarket condition codes, language, foil flag, quantity, price in GBP), and
@@ -71,7 +82,7 @@ There's no payment step. The basket's **Email this order** button opens the cust
 ## Upgrade path
 
 - **Checkout and live stock:** connect Shopify or Stripe. The Shopify export gives you a starting product list.
-- **Card images and market prices:** add Scryfall lookups (the import keeps each card's Scryfall ID). Browsers can call `https://api.scryfall.com` directly from a self-hosted site.
+- **Market prices:** Scryfall also returns EUR/USD prices for each card, which could be used to suggest a price (not yet wired in).
 - **Shared admin:** move `stock.json` into a small backend (Supabase, Firebase or a Cloudflare Worker) so edits go live without a commit.
 
 ## stock.json format
