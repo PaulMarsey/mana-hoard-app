@@ -154,6 +154,8 @@ All in the `CONFIG` block at the top of `app.js`:
 
 **Deck Builder:** shoppers paste a list from Moxfield, Archidekt or ManaBox at `#deck`. It matches cards in stock, adds them to the basket in one click, and lists what's missing.
 
+**Deck check (Shop admin):** paste a Moxfield or Archidekt list to see what you hold for it across all your listings, including drafts and sold-out ones: live, in drafts, short or not listed, with a copyable missing list.
+
 ## Sealed product, accessories and merch
 
 Card exports from ManaBox and PowerTools only cover cards, so add everything else in **Shop admin → Listings → Add a product**: name, type (booster pack, booster box, bundle, Commander deck, sleeves, dice, deck box, playmat, t-shirt and so on), optional set code, price and quantity. It goes live straight away.

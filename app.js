@@ -141,7 +141,7 @@ function matchDeck(){
     const k=deckNorm(w.name);
     if(deckState.basics&&BASICS.has(k)){rows.push({w,picks:[],got:0,skippedBasic:true});continue}
     let cands=pool.filter(p=>deckNorm(String(p.name).split(' // ')[0])===k||deckNorm(p.name)===k);
-    const sc=p=>(w.set&&p.set===w.set?0:1)*1e7+(deckState.pref==='foil'?(isFoil(p.finish)?0:1)*1e6:0)+(deckState.pref==='best'?Object.keys(CONDS).indexOf(p.cond)*1e5:0)+p.price;
+    const sc=p=>(w.set&&p.set===w.set?0:1)*1e7+(w.foil&&isFoil(p.finish)?0:w.foil?5e6:0)+(deckState.pref==='foil'?(isFoil(p.finish)?0:1)*1e6:0)+(deckState.pref==='best'?Object.keys(CONDS).indexOf(p.cond)*1e5:0)+p.price;
     cands.sort((a,b)=>sc(a)-sc(b));
     let need=w.qty;const picks=[];
     for(const p of cands){if(need<=0)break;const avail=p.qty-(used.get(p.id)||0);if(avail<=0)continue;const take=Math.min(avail,need);picks.push({p,take});need-=take;used.set(p.id,(used.get(p.id)||0)+take)}
@@ -162,7 +162,7 @@ function pDeck(){
     <p class="muted small" style="margin:0">Works with “1 Card Name”, “1x Card Name”, set codes like “(CMR) 472”, Archidekt tags and section headings.</p>
    </div>
    <div>${R?`<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:14px"><div class="stat"><b>${cards}/${wanted}</b><span>cards in the hoard</span></div><div class="stat"><b>${gbp(total)}</b><span>for what we have</span></div><div class="stat"><b>${missing.length}</b><span>still to find</span></div></div>
-    ${found.length?`<div class="tbl"><table class="decktable"><thead><tr><th>Card</th><th>Copy</th><th class="n">Qty</th><th class="n">Price</th></tr></thead><tbody>${found.map(r=>r.picks.map((x,j)=>`<tr><td>${j?'':`<b>${esc(r.w.name)}</b>${r.got<r.w.qty?` <span class="pill low">${r.got} of ${r.w.qty}</span>`:''}`}</td><td><button class="linkbtn" data-open="${esc(x.p.id)}">${esc(x.p.set)}${x.p.num?' #'+esc(x.p.num):''}</button> <span class="cond c-${condTone(x.p.cond)}">${esc(x.p.cond)}</span>${isFoil(x.p.finish)?' <span class="badge foil">Foil</span>':''}</td><td class="n">${x.take}</td><td class="n">${gbp(x.p.price*x.take)}</td></tr>`).join('')).join('')}</tbody></table></div>
+    ${found.length?`<div class="tbl"><table class="decktable"><thead><tr><th>Card</th><th>Copy</th><th class="n">Qty</th><th class="n">Price</th></tr></thead><tbody>${found.map(r=>r.picks.map((x,j)=>`<tr><td>${j?'':`<b>${esc(r.w.name)}</b>${r.got<r.w.qty?` <span class="pill low">${r.got} of ${r.w.qty}</span>`:''}`}</td><td><button class="linkbtn" data-open="${esc(x.p.id)}">${esc(x.p.set)}${x.p.num?' #'+esc(x.p.num):''}</button> <span class="cond c-${condTone(x.p.cond)}">${esc(x.p.cond)}</span>${isFoil(x.p.finish)?' <span class="badge foil">Foil</span>':r.w.foil?' <span class="muted small">(non-foil: no foil in stock)</span>':''}</td><td class="n">${x.take}</td><td class="n">${gbp(x.p.price*x.take)}</td></tr>`).join('')).join('')}</tbody></table></div>
      <div class="row" style="margin:14px 0"><button class="btn gold" id="deckAdd">Add ${cards} card${cards===1?'':'s'} to basket · ${gbp(total)}</button></div>`:'<div class="empty"><h3>None of these are in the hoard yet</h3><p>Send us the list and we’ll keep an eye out.</p></div>'}
     ${missing.length?`<details class="box missing"${found.length?'':' open'}><summary><b>Not in the hoard (${missing.length})</b></summary><ul>${missing.map(r=>`<li>${r.w.qty-r.got} × ${esc(r.w.name)}${r.got?` <span class="muted small">(we have ${r.got})</span>`:''}</li>`).join('')}</ul>
      <div class="row"><button class="btn ghost sm" id="deckCopyMissing">Copy missing list</button><a class="btn ghost sm" href="mailto:${esc(CONFIG.shopEmail)}?subject=${encodeURIComponent('Can the Hoard find these?')}&body=${encodeURIComponent('Hello Mana Hoard,\n\nCould you look out for these cards for me?\n\n'+missing.map(r=>`${r.w.qty-r.got} ${r.w.name}`).join('\n')+'\n\nThanks!')}">Ask the Hoard to find them</a></div></details>`:''}
@@ -305,11 +305,11 @@ function pManager(){
   if(!S.canManage)return `<section class="band wrap"><h1>Hoard Manager</h1><p class="muted">Only the shop owner and editors can manage stock.</p></section>`;
   const it=S.items,live=it.filter(i=>i.live);
   const val=live.reduce((s,i)=>s+i.price*i.qty,0),cards=it.reduce((s,i)=>s+i.qty,0);
-  const tabs=[['import','Import from ManaBox'],['powertools','TCG PowerTools'],['listings','Listings'],['collections','Collections'],['pricing','Pricing rules'],['publish','Publish'+(unpublished()?' •':'')],['export','Marketplace export'],['invoices','Invoices']];
+  const tabs=[['import','Import from ManaBox'],['powertools','TCG PowerTools'],['listings','Listings'],['deckcheck','Deck check'],['collections','Collections'],['pricing','Pricing rules'],['publish','Publish'+(unpublished()?' •':'')],['export','Marketplace export'],['invoices','Invoices']];
   return `<section class="band wrap"><div class="head"><div><h1>Hoard Manager</h1><p class="muted" style="max-width:46em">This is your working copy, saved in this browser. Customers see <code>${esc(CONFIG.stockFile)}</code>${PUB.updated?` (published ${esc(new Date(PUB.updated).toLocaleString('en-GB'))})`:''} — use <b>Publish</b> to update it.</p>${S.stale?`<p class="note" style="margin-top:10px">The live shop’s stock changed after you started this working copy (for example a TCG PowerTools sync or new images). <button class="linkbtn" id="resetWork2">Reset to published stock</button> to pick those changes up before editing.</p>`:''}</div><span id="savestate" class="pill${unpublished()?' low':''}">${unpublished()?'Unpublished changes':'Matches the live shop'}</span></div>
   <div class="stats"><div class="stat"><b>${it.length}</b><span>listings</span></div><div class="stat"><b>${cards}</b><span>cards in stock</span></div><div class="stat"><b>${live.length}</b><span>live in the shop</span></div><div class="stat"><b>${gbp(val)}</b><span>live stock value</span></div></div>
   <div class="tabs" role="tablist">${tabs.map(([k,t])=>`<button role="tab" data-tab="${k}" aria-selected="${mgr.tab===k}">${t}</button>`).join('')}</div>
-  <div id="mpanel">${({collections:mCollections,invoices:mInvoices,import:mImport,powertools:mPowerTools,listings:mListings,pricing:mPricing,publish:mPublish,export:mExport})[mgr.tab]()}</div></section>`}
+  <div id="mpanel">${({collections:mCollections,invoices:mInvoices,import:mImport,powertools:mPowerTools,listings:mListings,pricing:mPricing,publish:mPublish,export:mExport,deckcheck:mDeckCheck})[mgr.tab]()}</div></section>`}
 
 function mImport(){
   const p=mgr.preview;
@@ -374,6 +374,25 @@ function mPricing(){const s=S.settings;
    ${Object.keys(CONDS).map(k=>f('cond_'+k,s.cond[k],CONDS[k]+' ×',0.05)).join('')}</div>
    <p class="muted small">Example: a near-mint foil rare bought at £4.00 lists at ${gbp(priceFor({cost:400,finish:'Foil',cond:'NM',rarity:'rare'}))}.</p></div></div>`}
 
+const ownDeck={text:store.get('mh-owndeck',''),res:null};
+function checkOwnDeck(){
+  const parsed=parseDeck(ownDeck.text),rows=[];
+  for(const w of parsed.lines){const k=deckNorm(w.name);
+    const m=S.items.filter(i=>isCard(i)&&(deckNorm(String(i.name).split(' // ')[0])===k||deckNorm(i.name)===k)).sort((a,b)=>(b.live-a.live)||(b.qty-a.qty));
+    const live=m.filter(i=>i.live).reduce((s,i)=>s+i.qty,0),draft=m.filter(i=>!i.live).reduce((s,i)=>s+i.qty,0);
+    rows.push({w,m,live,draft,basic:BASICS.has(k)})}
+  ownDeck.res={rows}}
+function mDeckCheck(){
+  const R=ownDeck.res,rows=R?R.rows.filter(r=>!r.basic):[];
+  const full=rows.filter(r=>r.live>=r.w.qty),part=rows.filter(r=>r.live<r.w.qty&&r.live+r.draft>=r.w.qty),none=rows.filter(r=>r.live+r.draft<r.w.qty);
+  const st=r=>r.live>=r.w.qty?'<span class="pill">Live</span>':r.live+r.draft>=r.w.qty?'<span class="pill low">In drafts</span>':r.live+r.draft>0?`<span class="pill low">Have ${r.live+r.draft} of ${r.w.qty}</span>`:'<span class="pill low">Not listed</span>';
+  return `<div class="two"><div><h2>Check a decklist against your stock</h2><p class="muted">Paste a list from Moxfield (Export → Text) or Archidekt (Export → copy as text). Unlike the shoppers’ Deck Builder, this checks <b>everything you hold</b>, including drafts and sold-out listings, so you can build or sell a deck from the hoard.</p>
+   <textarea id="ownDeckText" rows="14" spellcheck="false" placeholder="1 Sol Ring (CMR) 472&#10;1x Arcane Signet (cmr) 297 [Ramp]" style="width:100%;font:13px/1.5 ui-monospace,monospace">${esc(ownDeck.text)}</textarea>
+   <div class="row" style="margin-top:10px"><button class="btn" id="ownDeckGo">Check my stock</button>${R?'<button class="btn ghost" id="ownDeckMissing">Copy what I’m missing</button>':''}</div></div>
+   <div>${R?`<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="stat"><b>${full.length}</b><span>live and ready</span></div><div class="stat"><b>${part.length}</b><span>held, still in drafts</span></div><div class="stat"><b>${none.length}</b><span>missing or short</span></div></div>
+    <div class="tbl" style="max-height:520px"><table><thead><tr><th>Card</th><th class="n">Need</th><th class="n">Live</th><th class="n">Drafts</th><th>Status</th></tr></thead><tbody>
+    ${[...none,...part,...full].map(r=>`<tr><td><b>${esc(r.w.name)}</b>${r.m.length?`<br><span class="muted small">${r.m.slice(0,3).map(i=>`${esc(i.set)}${i.num?' #'+esc(i.num):''} ${esc(i.cond)}${isFoil(i.finish)?' foil':''} · ${gbp(i.price)}`).join(' | ')}</span>`:''}</td><td class="n">${r.w.qty}</td><td class="n">${r.live}</td><td class="n">${r.draft}</td><td>${st(r)}</td></tr>`).join('')}</tbody></table></div>
+    ${R.rows.some(r=>r.basic)?'<p class="muted small">Basic lands not checked.</p>':''}`:'<div class="empty"><h3>Paste a list to see what you’ve got</h3><p>Each card shows how many are live, how many are sitting in drafts, and what you still need.</p></div>'}</div></div>`}
 function mExport(){
   const live=S.items.filter(i=>i.live&&i.qty>0);
   return `<div class="two"><div class="box"><h2>Cardmarket stock sheet</h2><p class="muted">Every live card with Cardmarket condition codes, language, foil flag, quantity and your price — ready to work through in Cardmarket’s stock upload.</p><button class="btn" data-exp="cm"${live.length?'':' disabled'}>Build sheet (${live.length})</button></div>
@@ -726,6 +745,8 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
     const sealed=/booster|bundle|prerelease|deck$|commander deck|starter deck/i.test(kind),set=$('#apSet').value.trim().toUpperCase();
     const it={id:uid(),name,set:set||(sealed?'':'ACC'),setName:set||(sealed?'Sealed':/mana hoard/i.test(name)?'Mana Hoard merch':'Accessories'),num:'',finish:kind,kind,rarity:'special',cond:'MT',lang:'en',qty,price,cat:sealed?'Sealed':'Accessories',live:true,added:Date.now()};
     if(ph)it.photo=ph;S.items.unshift(it);markDirty();render(false);toast(`${name} added and live`);return}
+  if(t.id==='ownDeckGo'){ownDeck.text=$('#ownDeckText').value;store.set('mh-owndeck',ownDeck.text);if(!ownDeck.text.trim()){toast('Paste a decklist first');return}checkOwnDeck();render(false);return}
+  if(t.id==='ownDeckMissing'&&ownDeck.res){const txt=ownDeck.res.rows.filter(r=>!r.basic&&r.live+r.draft<r.w.qty).map(r=>`${r.w.qty-r.live-r.draft} ${r.w.name}`).join('\n');toast(txt?(await copy(txt)?'Missing cards copied':'Copy was blocked'):'You have everything!');return}
   if(t.id==='deckFind'){deckState.text=$('#decktext').value;store.set('mh-deck',deckState.text);if(!deckState.text.trim()){toast('Paste a decklist first');return}matchDeck();render(false);document.querySelector('.deckgrid>div:last-child')?.scrollIntoView({behavior:'smooth',block:'start'});return}
   if(t.id==='deckClear'){deckState.text='';deckState.result=null;store.set('mh-deck','');render(false);return}
   if(t.id==='deckAdd'&&deckState.result){let n=0;deckState.result.rows.forEach(r=>r.picks.forEach(x=>{const b=basket.find(y=>y.id===x.p.id);if(b)b.qty=Math.min(x.p.qty,b.qty+x.take);else basket.push({id:x.p.id,qty:x.take});n+=x.take}));store.set('mh-basket',basket);renderBasket();matchDeck();render(false);toast(`${n} card${n===1?'':'s'} added to your basket`);openDrawer(true);return}
