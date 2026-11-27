@@ -418,3 +418,9 @@ input[type=range].hue::-moz-range-thumb{width:22px;height:22px;border-radius:50%
  .stable th{background:#f3e3bf!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .spay{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* checkout */
+.btn.pay{min-height:52px;font-size:17px}
+.paymarks{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.paymarks span{font:800 11.5px/1 Nunito,sans-serif;padding:6px 8px;border-radius:6px;background:#fbefd9;color:#2b1a10;border:1px solid #e8cf9a}
+.sheet.thanks{text-align:center}.sheet.thanks .shead{justify-content:center;gap:28px}

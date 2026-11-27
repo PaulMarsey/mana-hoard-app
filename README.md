@@ -18,6 +18,8 @@ It's a plain static site: HTML, CSS and JavaScript with no build step, no server
 | `.github/workflows/pages.yml` | On every push and daily: TCG PowerTools sync, Scryfall images, save stock, deploy to GitHub Pages |
 | `lib/powertools.js` | Reads PowerTools exports and works out stock changes (used by the manager and the daily job) |
 | `scripts/sync-powertools.mjs` | The daily job's PowerTools sync |
+| `checkout-worker/` | The Stripe checkout server (Cloudflare Worker), its settings and tests |
+| `.github/workflows/deploy-checkout.yml` | One-click deploy of the checkout server |
 | `data/powertools/` | Drop PowerTools exports here to sync them |
 | `scripts/add-scryfall-images.mjs` | Looks up missing card images on Scryfall (used by the deploy; can be run by hand) |
 
@@ -77,6 +79,30 @@ Card images come from [Scryfall](https://scryfall.com):
 
 Scryfall's terms ask that card images aren't cropped, stretched, recoloured or watermarked, and that the artist and copyright line stay visible. The site shows them whole and credits the artist and Scryfall. Keep it that way if you restyle.
 
+### Card payments: Stripe, Apple Pay and Google Pay
+Shoppers can pay at checkout by card, **Apple Pay** or **Google Pay** on Stripe's secure hosted payment page. Card details never touch this site. Until you switch it on, the basket uses email orders as before.
+
+**How it fits together:** the site is static and can't hold your Stripe secret key, so a tiny free **Cloudflare Worker** (`checkout-worker/`) does three things:
+1. It takes the basket, re-checks every price and quantity against your **published** `stock.json` (so nobody can edit a price in their browser), and opens a Stripe Checkout page in pounds, with UK delivery address and your postage options.
+2. Stripe's page shows cards plus whichever wallets you've switched on. Hosted Checkout needs no extra Apple Pay or Google Pay setup.
+3. After payment, Stripe tells the worker (webhook). If you've given it a GitHub token, it takes the sold cards out of `data/stock.json`. That commit redeploys the shop, and each payment is applied only once.
+
+**Set it up (about 20 minutes, test mode first):**
+1. **Stripe:** create an account at stripe.com. In **Settings → Payment methods**, make sure **Cards, Apple Pay and Google Pay** are on. In **Settings → Emails**, turn on receipts for successful payments. Copy your **test** secret key (`sk_test_…`) from **Developers → API keys**.
+2. **Cloudflare:** create a free account. Create an API token with the **Edit Cloudflare Workers** template, and note your **Account ID**.
+3. **GitHub secrets** (repo **Settings → Secrets and variables → Actions**): add `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `STRIPE_SECRET_KEY`. Optionally add `STOCK_GITHUB_TOKEN`, a fine-grained token for **this repo only** with **Contents: read and write**, so sales reduce stock automatically.
+4. **Deploy:** **Actions → Deploy checkout (Stripe worker) → Run workflow.** The log shows your worker address, e.g. `https://mana-hoard-checkout.<you>.workers.dev`.
+5. **Webhook:** in Stripe **Developers → Webhooks → Add endpoint**, enter `<worker address>/webhook` and choose events `checkout.session.completed` and `checkout.session.async_payment_succeeded`. Copy its **Signing secret** (`whsec_…`) into the GitHub secret `STRIPE_WEBHOOK_SECRET`, then run the deploy again.
+6. **Switch the shop on:** in `app.js` set `checkoutUrl:'https://mana-hoard-checkout.<you>.workers.dev'` and commit.
+7. **Test:** buy something with Stripe's test card `4242 4242 4242 4242` (any future date, any CVC). Check the order appears in Stripe and the stock drops.
+8. **Go live:** swap `STRIPE_SECRET_KEY` for your live key (`sk_live_…`), create the same webhook in live mode, update `STRIPE_WEBHOOK_SECRET`, and deploy again.
+
+**Postage and countries** live in `checkout-worker/wrangler.toml`: `SHIPPING` (name, price in pence, delivery days), `FREE_SHIP_OVER` (e.g. `3000` for free postage over £30) and `SHIP_COUNTRIES` (`GB`, or `GB,IE`…). Change them, commit, and run the deploy again.
+
+**Before taking real money:** fill in the **Policies** page with your delivery times and costs, returns and refunds (UK distance-selling rules give buyers 14 days to cancel), and privacy. Stripe expects these on your site.
+
+**PowerTools users:** card sales here reduce stock **here**. Also reduce them in TCG PowerTools (it has no API), otherwise your next PowerTools sync will put the quantity back.
+
 ### Daily sync with TCG PowerTools
 TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTrader or anywhere else PowerTools manages reduce the quantities here. PowerTools has no public API, so the sync works from its **CSV stock export** (PowerTools → **Export**).
 
@@ -109,7 +135,7 @@ TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTr
 
 ## How orders work right now
 
-There's no payment step. The basket's **Email this order** button opens the customer's email app with their order and reference filled in, addressed to `shopEmail`. You confirm stock and postage, send an invoice from **Invoices** (with a PayPal or bank-transfer note), mark the cards sold, and publish.
+With `checkoutUrl` set, shoppers pay through Stripe (see **Card payments** above). Without it, there's no payment step. The basket's **Email this order** button opens the customer's email app with their order and reference filled in, addressed to `shopEmail`. You confirm stock and postage, send an invoice from **Invoices** (with a PayPal or bank-transfer note), mark the cards sold, and publish.
 
 ## Upgrade path
 

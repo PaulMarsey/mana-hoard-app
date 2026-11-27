@@ -1,0 +1,36 @@
+name: Deploy checkout (Stripe worker)
+
+# Run by hand from Actions → "Deploy checkout (Stripe worker)" → Run workflow.
+# Needs these repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   (Cloudflare → My Profile → API Tokens → "Edit Cloudflare Workers" template)
+#   CLOUDFLARE_ACCOUNT_ID  (Cloudflare dashboard → Workers & Pages → right-hand side)
+#   STRIPE_SECRET_KEY      (Stripe → Developers → API keys; sk_test_… to start)
+#   STRIPE_WEBHOOK_SECRET  (Stripe → Developers → Webhooks → your endpoint → Signing secret)
+#   STOCK_GITHUB_TOKEN     (optional: fine-grained token, this repo only, Contents: read & write)
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test the worker
+        run: node checkout-worker/test/worker.test.mjs
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: checkout-worker
+          secrets: |
+            STRIPE_SECRET_KEY
+            STRIPE_WEBHOOK_SECRET
+            GITHUB_TOKEN
+        env:
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          GITHUB_TOKEN: ${{ secrets.STOCK_GITHUB_TOKEN }}

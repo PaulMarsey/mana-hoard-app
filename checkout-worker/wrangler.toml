@@ -1,0 +1,25 @@
+# Mana Hoard checkout worker — deploy with:  npx wrangler deploy
+# Secrets are NOT stored here. Add them with:
+#   npx wrangler secret put STRIPE_SECRET_KEY        (sk_test_… first, sk_live_… when you go live)
+#   npx wrangler secret put STRIPE_WEBHOOK_SECRET    (whsec_… from the Stripe webhook you create)
+#   npx wrangler secret put GITHUB_TOKEN             (optional: lets paid orders reduce stock automatically)
+name = "mana-hoard-checkout"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+# Your shop's address (checkout returns here after paying or cancelling)
+SHOP_URL = "https://paulmarsey.github.io/mana-hoard-app/"
+# Where the published stock lives: prices and stock are always checked here, never trusted from the browser
+STOCK_URL = "https://paulmarsey.github.io/mana-hoard-app/data/stock.json"
+# Repo to update when a card sells (needs GITHUB_TOKEN)
+GITHUB_REPO = "PaulMarsey/mana-hoard-app"
+GITHUB_BRANCH = "main"
+# Countries you post to (ISO codes, comma separated), e.g. "GB" or "GB,IE"
+SHIP_COUNTRIES = "GB"
+# Postage options shown at checkout: amount in pence, delivery estimate in working days
+SHIPPING = '[{"name":"Royal Mail 2nd Class","amount":150,"min":2,"max":4},{"name":"Royal Mail Tracked 48","amount":395,"min":2,"max":3}]'
+# Free tracked postage over this basket total in pence (0 = off), e.g. 3000 for £30
+FREE_SHIP_OVER = "0"
+# Extra sites allowed to start a checkout (comma separated), e.g. your custom domain later
+EXTRA_ORIGINS = ""

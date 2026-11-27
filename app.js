@@ -3,7 +3,8 @@
 const CONFIG={
   shopEmail:'hello@manahoard.co.uk',      // where basket orders and enquiries go
   stockFile:'data/stock.json',            // the published stock the shop reads
-  demoBanner:'Orders are confirmed by email — no payment is taken on this site yet.', // set to '' to hide
+  checkoutUrl:'',                         // your checkout worker's address (see README: Card payments). Empty = email orders only
+  demoBanner:null,                        // null = automatic message, '' = hide, or your own text
   cardImages:true                         // show Scryfall card images (false = drawn card frames only)
 };
 /* ============================================================== */
@@ -394,15 +395,38 @@ function renderBasket(){
   const lines=basket.map(b=>({b,l:byId(b.id)}));const sub=lines.reduce((s,{b,l})=>s+l.price*b.qty,0);
   $('#dbody').innerHTML=lines.length?lines.map(({b,l})=>`<div class="line">${art(l)}<div><b>${esc(l.name)}</b><br><span class="muted small">${esc(l.set)} · ${esc(l.cond)} · ${esc(l.finish)} · ${gbp(l.price)}</span></div>
    <div class="qty"><button data-bq="${esc(b.id)}" data-d="-1" aria-label="One fewer">−</button><span>${b.qty}</span><button data-bq="${esc(b.id)}" data-d="1" aria-label="One more"${b.qty>=l.qty?' disabled':''}>+</button></div></div>`).join(''):'<div class="empty" style="margin-top:20px"><h3>Your basket is empty</h3><p>Find something legendary in the Hoard.</p></div>';
-  $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div><p class="muted small" style="margin:0">Send your basket by email and the shop will confirm stock, delivery and payment.</p>
+  $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div><p class="muted small" style="margin:0">${CONFIG.checkoutUrl?'Choose postage at checkout. Every card is checked and packed by hand.':'Send your basket by email and the shop will confirm stock, delivery and payment.'}</p>
    <div><label class="l" for="bnote">Note (optional)</label><input type="text" id="bnote" placeholder="e.g. combine postage with last order" value="${esc(store.get('mh-note',''))}"></div>
-   <button class="btn gold" id="sendReq">Email this order</button><a class="btn ghost" href="#order">View &amp; print order summary</a>
-   <p class="muted small" style="margin:0">Or send it to ${esc(CONFIG.shopEmail)}</p>`:''}
+   ${CONFIG.checkoutUrl?`${payButton()}<button class="btn ghost" id="sendReq">Email this order instead</button>`:`<button class="btn gold" id="sendReq">Email this order</button>`}<a class="linkbtn" href="#order" style="text-align:center">View &amp; print order summary</a>
+   ${CONFIG.checkoutUrl?'':`<p class="muted small" style="margin:0">Or send it to ${esc(CONFIG.shopEmail)}</p>`}`:''}
 function summary(){return basket.map(b=>{const l=byId(b.id);return `${b.qty} x ${l.name} (${l.set} ${l.num||''}, ${l.cond}, ${l.finish}) @ ${gbp(l.price)}`}).join('\n')+`\nSubtotal: ${gbp(basket.reduce((s,b)=>s+byId(b.id).price*b.qty,0))}`}
 function sendRequest(){
   const n=$('#bnote');if(n)store.set('mh-note',n.value);const note=store.get('mh-note','');const ref=orderRef();
   const body=`Hello Mana Hoard,\n\nI'd like to order (ref ${ref}):\n\n${summary()}\n${note?`\nNote: ${note}\n`:''}\nThanks!`;
   location.href=`mailto:${CONFIG.shopEmail}?subject=${encodeURIComponent('Mana Hoard order '+ref)}&body=${encodeURIComponent(body)}`}
+const LOCK='<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+function payButton(compact){return `<button class="btn gold pay" id="payNow">${LOCK} Checkout securely</button>${compact?'':`<div class="paymarks" aria-label="Accepted: cards, Apple Pay, Google Pay"><span>Visa</span><span>Mastercard</span><span>Amex</span><span>Apple Pay</span><span>Google Pay</span></div><p class="muted small" style="margin:-4px 0 0;text-align:center">Secure payment by Stripe. We never see your card details.</p>`}`}
+async function startCheckout(btn){
+  if(!CONFIG.checkoutUrl||!basket.length)return;
+  const n=$('#bnote');if(n)store.set('mh-note',n.value);
+  const label=btn.innerHTML;btn.disabled=true;btn.textContent='Opening secure checkout…';
+  try{
+    const r=await fetch(CONFIG.checkoutUrl.replace(/\/+$/,'')+'/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:basket.map(b=>({id:b.id,qty:b.qty})),ref:orderRef(),note:store.get('mh-note','')})});
+    const d=await r.json().catch(()=>({}));
+    if(r.ok&&typeof d.url==='string'&&/^https:\/\/checkout\.stripe\.com\//.test(d.url)){store.set('mh-paying',orderRef());location.href=d.url;return}
+    if(r.status===409&&Array.isArray(d.problems)){
+      d.problems.forEach(p=>{const b=basket.find(x=>x.id===p.id);if(!b)return;if(p.left>0)b.qty=p.left;else basket=basket.filter(x=>x!==b)});
+      store.set('mh-basket',basket);renderBasket();if(route()==='order')render(false);
+      toast(`Your basket was updated: ${d.problems.map(p=>`${p.name||'a card'} is ${p.reason}`).join('; ')}. Please check and try again.`);
+    }else toast((d&&d.error)||'Checkout couldn’t open just now. Please try again, or email your order.');
+  }catch{toast('Couldn’t reach the secure checkout. Please try again, or email your order.')}
+  btn.disabled=false;btn.innerHTML=label}
+let paidRef=null;
+function pThanks(){
+  return `<section class="band wrap sheetwrap"><article class="sheet thanks"><header class="shead">${sheetLogo}<div><h2>${paidRef?'Payment received':'Thank you'}</h2><p>${paidRef?`Order <b>${esc(paidRef)}</b><br>`:''}${today()}</p></div></header>
+   <p class="sthanks" style="margin-top:0">Your treasures are safe in the hoard!</p>
+   <p class="snote">${paidRef?'Stripe has emailed your receipt. We\u2019ll check every card, pack your order by hand and email you when it\u2019s on its way.':'If you\u2019ve just paid, your receipt is on its way from Stripe by email.'} Questions? Email ${esc(CONFIG.shopEmail)}${paidRef?` quoting ${esc(paidRef)}`:''}.</p>
+   <div class="row noprint" style="justify-content:center;margin-top:18px"><a class="btn gold" href="#shop">Back to the Hoard</a></div></article></section>`}
 function orderRef(){let r=store.get('mh-ref','');if(!r){r='MH-'+Date.now().toString(36).toUpperCase().slice(-6);store.set('mh-ref',r)}return r}
 
 /* ---------- manager: collections ---------- */
@@ -480,12 +504,12 @@ function pOrder(){
   const lines=basket.map(b=>{const l=byId(b.id);return l&&{...l,qty:b.qty}}).filter(Boolean);
   if(!lines.length)return `<section class="band wrap"><div class="empty"><h3>Your basket is empty</h3><p>Add some treasures and your order summary will appear here.</p><p><a class="btn gold" href="#shop">Explore the Hoard</a></p></div></section>`;
   const sub=lines.reduce((s,l)=>s+l.price*l.qty,0),note=store.get('mh-note','');
-  return `<section class="band wrap sheetwrap"><div class="sheetbar noprint"><a class="linkbtn" href="#shop">← Back to the Hoard</a><div class="row"><button class="btn ghost" id="printSheet">Print or save as PDF</button><button class="btn gold" id="sendReq">Email this order</button></div></div>
+  return `<section class="band wrap sheetwrap"><div class="sheetbar noprint"><a class="linkbtn" href="#shop">← Back to the Hoard</a><div class="row"><button class="btn ghost" id="printSheet">Print or save as PDF</button>${CONFIG.checkoutUrl?'<button class="btn ghost" id="sendReq">Email this order</button>'+payButton(true):'<button class="btn gold" id="sendReq">Email this order</button>'}</div></div>
    <article class="sheet"><header class="shead">${sheetLogo}<div><h2>Order request</h2><p>Reference <b>${esc(orderRef())}</b><br>${today()}</p></div></header>
     ${sheetTable(lines)}
-    <div class="stotal"><div><span>Subtotal</span><b>${gbp(sub)}</b></div><div><span>Postage</span><b>Confirmed by email</b></div></div>
+    <div class="stotal"><div><span>Subtotal</span><b>${gbp(sub)}</b></div><div><span>Postage</span><b>${CONFIG.checkoutUrl?'Chosen at checkout':'Confirmed by email'}</b></div></div>
     ${note?`<p class="snote"><b>Your note:</b> ${esc(note)}</p>`:''}
-    <p class="snote">Send this order with <b>Email this order</b>, or email it to ${esc(CONFIG.shopEmail)} quoting the reference. We'll check every card, confirm postage and send an invoice. Nothing is charged yet.</p>
+    <p class="snote">${CONFIG.checkoutUrl?`Pay securely by card, Apple Pay or Google Pay with <b>Checkout securely</b>, or email this order to ${esc(CONFIG.shopEmail)} quoting the reference and we'll send an invoice.`:`Send this order with <b>Email this order</b>, or email it to ${esc(CONFIG.shopEmail)} quoting the reference. We'll check every card, confirm postage and send an invoice. Nothing is charged yet.`}</p>
     <p class="sthanks">Thank you for visiting the hoard!</p>
     <footer class="sfoot">Mana Hoard · ${esc(CONFIG.shopEmail)}</footer></article></section>`}
 function pInvoice(){
@@ -529,9 +553,9 @@ function openCard(id){const l=byId(id);if(!l)return;const d=$('#dlg');const inB=
   d.showModal()}
 
 /* ---------- router ---------- */
-const ROUTES={order:pOrder,invoice:pInvoice,home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbout,contact:pContact,policies:pPolicies,manager:pManager};
+const ROUTES={thanks:pThanks,order:pOrder,invoice:pInvoice,home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbout,contact:pContact,policies:pPolicies,manager:pManager};
 function route(){const r=location.hash.slice(1);return ROUTES[r]?r:'home'}
-function render(scroll){const r=route();renderNav(r);$('#view').innerHTML=ROUTES[r]();if(r==='shop')renderResults();{const d=$('#demo');if(d)d.hidden=r==='manager'||r==='invoice'||r==='order'}if(scroll)window.scrollTo(0,0)}
+function render(scroll){const r=route();renderNav(r);$('#view').innerHTML=ROUTES[r]();if(r==='shop')renderResults();{const d=$('#demo');if(d)d.hidden=r==='manager'||r==='invoice'||r==='order'||r==='thanks'}if(scroll)window.scrollTo(0,0)}
 function rerenderSoft(){const r=route();if(r==='shop')renderResults();else if(r==='manager'){const p=$('#mpanel');if(p&&document.activeElement&&p.contains(document.activeElement)&&document.activeElement.matches('input,select'))return;render(false)}else render(false);renderBasket()}
 addEventListener('hashchange',()=>{if($('#drawer').classList.contains('open'))openDrawer(false);if($('#dlg').open)$('#dlg').close();render(true)});
 
@@ -555,6 +579,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.id==='flip'){const w=t.closest('.dlg').querySelector('.flipbox');w.classList.toggle('back');t.textContent=w.classList.contains('back')?'Show front':'Show back';return}if(t.id==='closeBasket'){openDrawer(false);return}
   if(t.dataset.bq){const b=basket.find(x=>x.id===t.dataset.bq);if(b){b.qty+=+t.dataset.d;if(b.qty<=0)basket=basket.filter(x=>x!==b);store.set('mh-basket',basket);renderBasket()}return}
   if(t.id==='sendReq'){sendRequest();return}
+  if(t.id==='payNow'){startCheckout(t);return}
   if(t.id==='printSheet'){try{window.print()}catch{toast('Use your browser’s Print option to save it as a PDF')}return}
   if(t.id==='addCol'){S.settings.collections.push(colNorm({name:'New collection',hue:Math.floor(Math.random()*360)}));markDirty();render(false);const all=document.querySelectorAll('.colcard');all[all.length-1]?.scrollIntoView({block:'center'});return}
   if(t.dataset.colmove){const id=t.closest('[data-col]').dataset.col,a=S.settings.collections,i=a.findIndex(c=>c.id===id),j=i+(+t.dataset.colmove);if(j>=0&&j<a.length){[a[i],a[j]]=[a[j],a[i]];markDirty();render(false)}return}
@@ -642,7 +667,8 @@ async function boot(){
   else{S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);S.basedOn=PUB.updated}
   S.settings.collections=(Array.isArray(S.settings.collections)?S.settings.collections:structuredClone(DEFAULTS.collections)).map(colNorm);
   S.loaded=true;render(false);renderBasket()}
-if(CONFIG.demoBanner)$('#demo').textContent=CONFIG.demoBanner;else $('#demo').remove();
+{const msg=CONFIG.demoBanner??(CONFIG.checkoutUrl?'Secure checkout by Stripe: pay by card, Apple Pay or Google Pay.':'Orders are confirmed by email. No payment is taken on this site yet.');if(msg)$('#demo').textContent=msg;else $('#demo').remove()}
 $('#femail').textContent=CONFIG.shopEmail;
+try{const q=new URLSearchParams(location.search);if(q.get('paid')){paidRef=store.get('mh-paying','')||store.get('mh-ref','')||'your order';basket=[];['mh-basket','mh-ref','mh-note','mh-paying'].forEach(k=>{try{localStorage.removeItem(k)}catch{}});history.replaceState(null,'',location.pathname+'#thanks')}}catch{}
 render(false);renderBasket();boot();
 }
