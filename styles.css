@@ -482,3 +482,14 @@ s.was{color:var(--muted);font-weight:500;font-size:.78em;text-decoration-thickne
 @keyframes splashSpark{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translateY(-200px) scale(1.1)}}
 @media (prefers-reduced-motion:reduce){.splash-logo,.splash-glow,.splash-sparks i{animation:none}.splash-sparks{display:none}.splash-tag{animation:none;opacity:1}}
 @media print{#splash{display:none}}
+
+/* ---------- product art and photos ---------- */
+.pframe{position:relative;aspect-ratio:63/88;border-radius:12px;overflow:hidden;background:#1a0f08;border:1px solid rgba(255,200,110,.18)}
+.pframe .prodsvg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pframe .pphoto{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#f7f1e3}
+.thumb.pthumb{display:inline-block;overflow:hidden;border-radius:6px}
+.thumb.pthumb .prodsvg{width:100%;height:100%;display:block}
+.addprod{margin:0 0 14px}.addprod summary{cursor:pointer;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.apgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.apgrid .wide{grid-column:span 2}
+@media (max-width:760px){.apgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}

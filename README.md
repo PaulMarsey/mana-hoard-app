@@ -154,6 +154,17 @@ All in the `CONFIG` block at the top of `app.js`:
 
 **Deck Builder:** shoppers paste a list from Moxfield, Archidekt or ManaBox at `#deck`. It matches cards in stock, adds them to the basket in one click, and lists what's missing.
 
+## Sealed product, accessories and merch
+
+Card exports from ManaBox and PowerTools only cover cards, so add everything else in **Shop admin → Listings → Add a product**: name, type (booster pack, booster box, bundle, Commander deck, sleeves, dice, deck box, playmat, t-shirt and so on), optional set code, price and quantity. It goes live straight away.
+
+**Photos:** until you add a photo, each product gets drawn art in the shop's style for its type. Anything with "Mana Hoard" in the name gets your dragon logo on it (playmat, t-shirt, deck box, dice bag, stickers). To use a real photo:
+1. Take the photo on a plain background, square or portrait.
+2. In GitHub, open `assets/products/`, choose **Add file → Upload files** and commit it.
+3. Type its path, e.g. `assets/products/fdn-play-booster.jpg`, into the **Photo** box on that listing (or when adding the product), then publish.
+
+You can also paste an `https://` image address, but only use images you have the right to use: your own photos, or official images the maker supplies to retailers (Wizards provides them to stores through WPN). Don't copy other shops' photos.
+
 ## How orders work right now
 
 With `checkoutUrl` set, shoppers pay through Stripe (see **Card payments** above). Without it, there's no payment step. The basket's **Email this order** button opens the customer's email app with their order and reference filled in, addressed to `shopEmail`. You confirm stock and postage, send an invoice from **Invoices** (with a PayPal or bank-transfer note), mark the cards sold, and publish.

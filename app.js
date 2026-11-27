@@ -72,7 +72,11 @@ const catalogue=()=>{if(!PUB.ok)return {list:DEMO,demo:true};return {list:PUB.it
 const byId=id=>catalogue().list.find(i=>i.id===id);
 const rk=r=>{r=String(r||'').toLowerCase();return r.startsWith('myth')?'mythic':r.startsWith('rare')?'rare':r.startsWith('unc')?'uncommon':r.startsWith('com')?'common':'special'};
 
+const photoUrl=u=>typeof u==='string'&&(/^https:\/\/[^\s"'<>]+$/i.test(u)||/^assets\/products\/[\w\-./ ]+\.(jpe?g|png|webp|avif)$/i.test(u))&&!u.includes('..')?u:'';
+const prodArt=l=>window.MHProducts?MHProducts.productArt(l):'';
 function art(l,big){
+  const ph=photoUrl(l.photo);
+  if(ph||l.cat==='Sealed'||l.cat==='Accessories')return `<div class="pframe">${prodArt(l)}${ph?`<img class="pphoto" src="${esc(encodeURI(ph))}" alt="${esc(l.name)}" loading="lazy" decoding="async" onerror="this.remove()">`:''}</div>`;
   const h=hash(l.name+'|'+(l.set||''))%360,sealed=l.cat==='Sealed'||l.cat==='Accessories';
   const glyph=sealed?(l.cat==='Sealed'?'◈':'❖'):['✦','✧','❂','✺','✶','☽'][hash(l.name)%6];
   const foil=isFoil(l.finish||'');
@@ -92,7 +96,7 @@ function pcard(l){
   <div class="pbody"><h3>${esc(l.name)}</h3>
   <div class="badges"><span class="setcode">${esc(l.set||'—')}</span>${sealed?`<span class="badge">${esc(l.cat)}</span>`:`<span class="cond c-${condTone(l.cond)}" title="${esc(CONDS[l.cond]||l.cond)}">${esc(l.cond)}</span><span class="badge">${esc((l.lang||'en').toUpperCase())}</span>`}${isFoil(l.finish)?`<span class="badge foil">${esc(l.finish)}</span>`:''}</div>
   <div class="prow"><span class="pricewrap">${onSale(l)?`<s class="was">${gbp(l.was)}</s>`:''}<span class="price">${gbp(l.price)}</span></span><span class="stock ${st[0]}">${st[1]}</span></div></div>${onSale(l)?`<span class="salebadge">Sale −${Math.round((1-l.price/l.was)*100)}%</span>`:''}</button>`}
-const isDemoItem=i=>/^msh-/.test(i.id)||i.id==='msc-deck'||i.id==='acc-sleeves';
+const isDemoItem=i=>/^(msh|demo)-/.test(i.id)||i.id==='msc-deck'||i.id==='acc-sleeves';
 const onSale=l=>(+l.was||0)>(+l.price||0)&&l.price>0;
 
 /* ---------- promise, postage, reviews ---------- */
@@ -326,20 +330,34 @@ function mImport(){
    :`<div class="empty"><h3>Nothing read yet</h3><p>Your import preview will appear here, with quantities merged and starting prices worked out.</p></div>`}</div></div>`}
 
 function mgrFiltered(){const q=mgr.q.toLowerCase();return S.items.filter(i=>(mgr.filter==='all'||(mgr.filter==='live'?i.live:mgr.filter==='draft'?!i.live:mgr.filter==='out'?i.qty<=0:true))&&(!q||`${i.name} ${i.set} ${i.setName}`.toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name))}
+const KIND_OPTS=['Play booster pack','Collector booster pack','Play booster box','Collector booster box','Bundle','Prerelease pack','Commander deck','Starter deck','Sleeves','Dice','Deck box','Playmat','Binder','Dice bag','T-shirt','Stickers','Other'];
+function addProductForm(){
+  return `<details class="box addprod"${S.items.some(i=>!isCard(i))?'':' open'}><summary><b>Add a product</b> <span class="muted small">sealed product, sleeves, dice, merch: anything that isn't in a card export</span></summary>
+   <div class="apgrid">
+    <div class="wide"><label class="l" for="apName">Name</label><input type="text" id="apName" placeholder="e.g. Foundations Play Booster, Mana Hoard playmat"></div>
+    <div><label class="l" for="apKind">Type</label><select id="apKind">${KIND_OPTS.map(k=>`<option>${k}</option>`).join('')}</select></div>
+    <div><label class="l" for="apSet">Set code <span class="muted small">(optional)</span></label><input type="text" id="apSet" placeholder="e.g. FDN" maxlength="6"></div>
+    <div><label class="l" for="apPrice">Price £</label><input type="number" id="apPrice" min="0" step="0.01" placeholder="5.49"></div>
+    <div><label class="l" for="apQty">Quantity</label><input type="number" id="apQty" min="0" step="1" value="1"></div>
+    <div class="wide"><label class="l" for="apPhoto">Photo <span class="muted small">(optional: assets/products/your-photo.jpg or a web address)</span></label><input type="text" id="apPhoto" placeholder="assets/products/foundations-pack.jpg"></div>
+   </div>
+   <div class="row" style="margin-top:12px"><button class="btn" id="apAdd">Add to the Hoard</button><span class="muted small">No photo yet? It gets drawn product art in the shop's style until you add one.</span></div></details>`}
 function mListings(){
   const r=mgrFiltered(),drafts=S.items.filter(i=>!i.live).length;
   if(!S.items.length)return `<div class="empty"><h3>No listings yet</h3><p>Import a ManaBox export to fill the Hoard.</p><p><button class="btn" data-tab="import">Go to import</button></p></div>`;
   return `<div class="bar"><div class="row"><input type="search" id="mq" placeholder="Search listings" value="${esc(mgr.q)}" style="width:240px">
    <div class="chips">${[['all','All'],['live','Live'],['draft','Drafts'],['out','Sold out']].map(([k,t])=>`<button class="chip" data-mf="${k}" aria-pressed="${mgr.filter===k}">${t}</button>`).join('')}</div></div>
    <div class="row"><button class="btn sm ghost" id="repriceDrafts"${drafts?'':' disabled'}>Re-price drafts by rules</button><button class="btn sm" id="publishAll"${drafts?'':' disabled'}>Publish ${drafts} draft${drafts===1?'':'s'}</button></div></div>
+  ${addProductForm()}
   ${imgBar()}
-  <div class="tbl"><table><thead><tr><th>Card</th><th>Finish</th><th>Cond.</th><th class="n">Qty</th><th class="n">Price £</th><th class="n" title="Optional: the old price, shown crossed out">Was £</th><th>Category</th><th>Live</th><th></th></tr></thead><tbody>
-  ${r.slice(0,mgr.shown).map(i=>`<tr data-id="${esc(i.id)}"><td><div class="row" style="flex-wrap:nowrap;gap:10px">${sfImg(i.img)?`<img class="thumb" src="${esc(i.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:'<span class="thumb none" aria-hidden="true"></span>'}<span><b>${esc(i.name)}</b><br><span class="muted small">${esc(i.setName||i.set)} ${i.num?'#'+esc(i.num):''} · ${esc(i.lang||'en')}${i.imgMiss?' · <span style="color:var(--warn)">no Scryfall match</span>':''}</span></span></div></td><td>${esc(i.finish)}</td>
+  <div class="tbl"><table><thead><tr><th>Card</th><th>Finish</th><th>Cond.</th><th class="n">Qty</th><th class="n">Price £</th><th class="n" title="Optional: the old price, shown crossed out">Was £</th><th>Category</th><th title="Your own photo: a file in assets/products/ or a web address">Photo</th><th>Live</th><th></th></tr></thead><tbody>
+  ${r.slice(0,mgr.shown).map(i=>`<tr data-id="${esc(i.id)}"><td><div class="row" style="flex-wrap:nowrap;gap:10px">${photoUrl(i.photo)?`<img class="thumb" src="${esc(encodeURI(i.photo))}" alt="" loading="lazy">`:sfImg(i.img)?`<img class="thumb" src="${esc(i.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:isCard(i)?'<span class="thumb none" aria-hidden="true"></span>':`<span class="thumb pthumb" aria-hidden="true">${prodArt(i)}</span>`}<span><b>${esc(i.name)}</b><br><span class="muted small">${esc(i.setName||i.set)} ${i.num?'#'+esc(i.num):''} · ${esc(i.lang||'en')}${i.imgMiss?' · <span style="color:var(--warn)">no Scryfall match</span>':''}</span></span></div></td><td>${esc(i.finish)}</td>
    <td><select data-f="cond" aria-label="Condition">${Object.keys(CONDS).map(k=>`<option${i.cond===k?' selected':''}>${k}</option>`).join('')}</select></td>
    <td class="n"><input type="number" min="0" step="1" data-f="qty" value="${i.qty}" aria-label="Quantity"></td>
    <td class="n"><input type="number" min="0" step="0.01" data-f="price" value="${(i.price/100).toFixed(2)}" aria-label="Price in pounds"></td>
    <td class="n"><input type="number" min="0" step="0.01" data-f="was" value="${i.was?(i.was/100).toFixed(2):''}" placeholder="—" aria-label="Was price in pounds (sale)"></td>
    <td><select data-f="cat" aria-label="Category">${CATS.map(c=>`<option${i.cat===c?' selected':''}>${c}</option>`).join('')}</select></td>
+   <td><input type="text" data-f="photo" value="${esc(i.photo||'')}" placeholder="${isCard(i)?'Scryfall image':'assets/products/…'}" aria-label="Photo" style="width:150px"></td>
    <td><button class="switch" role="switch" data-f="live" aria-checked="${!!i.live}" aria-label="Live in shop"></button></td>
    <td><button class="linkbtn" data-del="${esc(i.id)}" style="color:var(--warn)">Remove</button></td></tr>`).join('')}
   </tbody></table></div>${r.length>mgr.shown?`<p style="text-align:center"><button class="btn ghost" id="mmore">Show more (${r.length-mgr.shown} left)</button></p>`:''}
@@ -703,6 +721,11 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.dataset.bq){const b=basket.find(x=>x.id===t.dataset.bq);if(b){b.qty+=+t.dataset.d;if(b.qty<=0)basket=basket.filter(x=>x!==b);store.set('mh-basket',basket);renderBasket()}return}
   if(t.id==='sendReq'){sendRequest();return}
   if(t.id==='payNow'){startCheckout(t);return}
+  if(t.id==='apAdd'){const name=$('#apName').value.trim(),kind=$('#apKind').value,price=Math.round((parseFloat($('#apPrice').value)||0)*100),qty=Math.max(0,parseInt($('#apQty').value,10)||0),ph=$('#apPhoto').value.trim();
+    if(!name){toast('Give the product a name');return}if(!price){toast('Add a price');return}if(ph&&!photoUrl(ph)){toast('Photo must be a file in assets/products/ or an https:// address');return}
+    const sealed=/booster|bundle|prerelease|deck$|commander deck|starter deck/i.test(kind),set=$('#apSet').value.trim().toUpperCase();
+    const it={id:uid(),name,set:set||(sealed?'':'ACC'),setName:set||(sealed?'Sealed':/mana hoard/i.test(name)?'Mana Hoard merch':'Accessories'),num:'',finish:kind,kind,rarity:'special',cond:'MT',lang:'en',qty,price,cat:sealed?'Sealed':'Accessories',live:true,added:Date.now()};
+    if(ph)it.photo=ph;S.items.unshift(it);markDirty();render(false);toast(`${name} added and live`);return}
   if(t.id==='deckFind'){deckState.text=$('#decktext').value;store.set('mh-deck',deckState.text);if(!deckState.text.trim()){toast('Paste a decklist first');return}matchDeck();render(false);document.querySelector('.deckgrid>div:last-child')?.scrollIntoView({behavior:'smooth',block:'start'});return}
   if(t.id==='deckClear'){deckState.text='';deckState.result=null;store.set('mh-deck','');render(false);return}
   if(t.id==='deckAdd'&&deckState.result){let n=0;deckState.result.rows.forEach(r=>r.picks.forEach(x=>{const b=basket.find(y=>y.id===x.p.id);if(b)b.qty=Math.min(x.p.qty,b.qty+x.take);else basket.push({id:x.p.id,qty:x.take});n+=x.take}));store.set('mh-basket',basket);renderBasket();matchDeck();render(false);toast(`${n} card${n===1?'':'s'} added to your basket`);openDrawer(true);return}
@@ -777,7 +800,7 @@ document.addEventListener('change',async e=>{const t=e.target;
   if(t.dataset.pt){const k=t.dataset.pt,o=S.settings.pt=S.settings.pt||structuredClone(DEFAULTS.pt);o[k]=t.type==='checkbox'?t.checked:k==='rate'?Math.max(0,parseFloat(t.value)||0):t.value;markDirty();if(mgr.pt){ptPreview();render(false)}return}
   if(t.id==='file'&&t.files[0]){const txt=await t.files[0].text();const r=readImport(txt);if(!r||r.error){toast(r?r.error:'That file looks empty');return}mgr.preview=r;render(false)}
   const tr=t.closest&&t.closest('tr[data-id]');if(tr&&t.dataset.f){const i=S.items.find(x=>x.id===tr.dataset.id);if(!i)return;
-    if(t.dataset.f==='qty')i.qty=Math.max(0,parseInt(t.value,10)||0);if(t.dataset.f==='price')i.price=Math.max(0,Math.round((parseFloat(t.value)||0)*100));if(t.dataset.f==='was'){const w=Math.round((parseFloat(t.value)||0)*100);if(w>0)i.was=w;else delete i.was}if(t.dataset.f==='cond')i.cond=t.value;if(t.dataset.f==='cat')i.cat=t.value;markDirty()}
+    if(t.dataset.f==='qty')i.qty=Math.max(0,parseInt(t.value,10)||0);if(t.dataset.f==='price')i.price=Math.max(0,Math.round((parseFloat(t.value)||0)*100));if(t.dataset.f==='was'){const w=Math.round((parseFloat(t.value)||0)*100);if(w>0)i.was=w;else delete i.was}if(t.dataset.f==='cond')i.cond=t.value;if(t.dataset.f==='cat')i.cat=t.value;if(t.dataset.f==='photo'){const v=t.value.trim();if(!v)delete i.photo;else if(photoUrl(v))i.photo=v;else{toast('Use a file in assets/products/ (e.g. assets/products/sleeves.jpg) or an https:// address');t.value=i.photo||'';return}}markDirty()}
   if(t.dataset.set){const k=t.dataset.set,v=parseFloat(t.value)||0,s=S.settings;
     if(k==='markup')s.markup=v;else if(k==='foil')s.foil=v;else if(k==='min')s.min=Math.round(v*100);else if(k.startsWith('floor_'))s.floor[k.slice(6)]=Math.round(v*100);else if(k.startsWith('cond_'))s.cond[k.slice(5)]=v;markDirty()}
 });
