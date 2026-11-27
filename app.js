@@ -59,58 +59,71 @@ function art(l,big){
 const sfImg=u=>typeof u==='string'&&/^https:\/\/[a-z0-9.-]+\.scryfall\.io\//i.test(u)?u:'';
 
 function pcard(l){
-  const st=l.qty<=0?'<span class="pill low">Sold out</span>':l.qty<=2?'<span class="pill low">Low stock</span>':'<span class="pill">In stock</span>';
-  return `<button class="pcard" data-open="${esc(l.id)}">${art(l)}
-  <div class="meta"><span>${esc(l.cat)}</span><span>${esc(l.set)}</span></div>
-  <h3>${esc(l.name)}</h3><div class="meta"><span>${esc(CONDS[l.cond]||l.cond)} · ${esc(l.finish)}</span></div>
-  <div class="meta" style="align-items:center"><span class="price">${gbp(l.price)}</span>${st}</div></button>`}
+  const st=l.qty<=0?['out','Sold out']:l.qty<=2?['low',`Only ${l.qty} left`]:['in','In stock'];
+  return `<button class="pcard${l.qty<=0?' soldout':''}" data-open="${esc(l.id)}" aria-label="${esc(l.name)}, ${esc(l.set)}, ${gbp(l.price)}">
+  <div class="pimg">${art(l)}</div>
+  <div class="pbody"><h3>${esc(l.name)}</h3>
+  <p class="psub">${esc(l.set)} · ${esc(l.cond)}${isFoil(l.finish)?` · <span class="foiltag">${esc(l.finish)}</span>`:l.cat==='Sealed'||l.cat==='Accessories'?` · ${esc(l.cat)}`:''}</p>
+  <div class="prow"><span class="price">${gbp(l.price)}</span><span class="stock ${st[0]}">${st[1]}</span></div></div></button>`}
 
 /* ---------- pages ---------- */
 const NAV=[['shop','The Hoard'],['commander','Commander'],['tales','Tales from the Hoard'],['about','About'],['contact','Contact']];
-function renderNav(r){$('#nav').innerHTML=NAV.map(([k,t])=>`<a href="#${k}"${r===k?' aria-current="page"':''}>${t}</a>`).join('')}
+function renderNav(r){$('#nav').innerHTML=NAV.map(([k,t])=>`<a href="#${k}"${r===k?' aria-current="page"':''}>${t}</a>`).join('');
+  document.querySelectorAll('#tabbar a').forEach(a=>{if(a.getAttribute('href')==='#'+r)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
 
 function pHome(){
-  const {list,demo}=catalogue();const fav=[...list].sort((a,b)=>b.price-a.price).slice(0,4);const recent=[...list].sort((a,b)=>(b.added||0)-(a.added||0)).slice(0,4);
+  const {list,demo}=catalogue();const fav=[...list].sort((a,b)=>b.price-a.price).slice(0,4);const recent=[...list].sort((a,b)=>(b.added||0)-(a.added||0)).slice(0,6);
   const singles=[...list].filter(isCard).sort((a,b)=>(!!sfImg(b.img)-!!sfImg(a.img))||(b.price-a.price));
   const heroCards=(singles.length>=3?singles:fav.length>=3?fav:DEMO).slice(0,3);
-  return `<section class="hero"><div class="wrap hgrid"><div>
+  const treasures=singles.length>=7?singles.slice(3,7):singles.length>=4?singles.slice(0,4):fav;
+  const embers=Array.from({length:14},(_,i)=>`<i class="ember" style="--x:${8+i*6.4}%;--d:${6+(i*37)%7}s;--dl:-${(i*1.7)%9}s;--dx:${((i*53)%60)-30}px"></i>`).join('');
+  return `<section class="hero">${embers}<div class="wrap hgrid"><div>
    <h1>Every card has a legend.</h1>
-   <p class="lead">Discover your next treasure. Magic: The Gathering singles, Commander staples and sealed product from an independent UK shop built by a player, for players.</p>
-   <div class="cta"><a class="btn gold" href="#shop">Explore the Hoard</a><a class="btn ghost" href="#about">Discover our story</a></div>
-   <p class="muted small" style="margin-top:22px">Built for Commander players, collectors and tabletop fans across the UK.</p></div>
-   <div class="fan"><div class="orb"></div>${heroCards.map(art).join('')}</div></div></section>
-  <div class="strip"><div>Condition-checked stock</div><div>UK pricing in pounds</div><div>Commander focused</div><div>Player-run support</div></div>
+   <p class="lead">Discover your next treasure. Singles, Commander staples and sealed Magic: The Gathering from an independent UK shop, built by a player for players.</p>
+   <form class="hsearch" id="hsearch" role="search"><input type="search" id="hq" placeholder="Search the hoard…" aria-label="Search cards" autocomplete="off"><button class="btn gold" type="submit">Search</button></form>
+   <div class="cta"><a class="btn ghost" href="#shop">Browse the Hoard</a><a class="btn ghost" href="#commander">Commander staples</a></div>
+   <div class="trust"><span>Condition-checked</span><span>Priced in pounds</span><span>Packed with care</span></div></div>
+   <div class="fan"><div class="arch"></div>${heroCards.map(c=>art(c)).join('')}</div></div></section>
   <section class="band wrap"><div class="head"><h2>Shop your way</h2><a href="#shop">Browse everything →</a></div>
-   <div class="cats">${[['Singles','Magic singles','Cards, staples and collector favourites','c1'],['Commander','Commander','Staples, ramp and ready-to-play picks','c2'],['Sealed','Sealed products','Boosters, bundles and decks','c3'],['Accessories','Accessories','Sleeves, boxes and table gear','c4']].map(([c,n,d,k])=>`<button class="cat ${k}" data-cat="${c}"><span style="font-size:30px">✦</span><span><strong>${n}</strong><small>${d}</small></span></button>`).join('')}</div></section>
-  <section class="surface"><div class="band wrap"><div class="head"><h2>Hoard favourites</h2><a href="#shop">See the full catalogue →</a></div>
-   ${demo?'<p class="muted small" style="margin-top:-12px">Sample stock from the original site, shown until real listings go live.</p>':''}
-   ${fav.length?`<div class="grid">${fav.map(pcard).join('')}</div>`:'<div class="empty"><h3>The Hoard is being stocked.</h3><p>New cards are on their way — check back soon.</p></div>'}</div></section>
-  <section class="band wrap"><div class="head"><h2>Recently added</h2><a href="#shop">Browse more →</a></div>
-   <div class="grid">${recent.map(pcard).join('')}</div></section>
-  <section class="surface"><div class="band wrap two" style="align-items:center"><div><h2>Made by players. Here for the community.</h2><p class="muted">Mana Hoard is an independent UK trading card store where fantasy, strategy and collecting come together. We specialise in Magic: The Gathering, with a particular passion for Commander.</p></div>
-   <div class="tri" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="box"><h3>Commander</h3><p>Focused curation</p></div><div class="box"><h3>Community</h3><p>Real-player support</p></div><div class="box"><h3>Care</h3><p>Every order packed thoughtfully</p></div></div></div></section>`}
+   <div class="cats">${[['Singles','Magic singles','Staples and collector favourites','c1','✧'],['Commander','Commander','Ramp, removal and finishers','c2','✦'],['Sealed','Sealed product','Boosters, boxes and decks','c3','◈'],['Accessories','Accessories','Sleeves and table gear','c4','❖']].map(([c,n,d,k,g])=>`<button class="cat ${k}" data-cat="${c}"><span class="glyph" aria-hidden="true">${g}</span><span><strong>${n}</strong><small>${d}</small></span></button>`).join('')}</div></section>
+  <section class="surface"><div class="band wrap"><div class="head"><h2>Treasures of the hoard</h2><a href="#shop">See all →</a></div>
+   ${demo?'<p class="muted small" style="margin-top:-10px">Sample stock, shown until real listings go live.</p>':''}
+   ${treasures.length?`<div class="grid rail">${treasures.map(pcard).join('')}</div>`:'<div class="empty"><h3>The Hoard is being stocked.</h3><p>New cards are on their way — check back soon.</p></div>'}</div></section>
+  <section class="band wrap"><div class="head"><h2>Fresh from the vault</h2><a href="#shop">Browse more →</a></div>
+   <div class="grid rail">${recent.map(pcard).join('')}</div></section>
+  <section class="surface"><div class="band wrap lore"><div><h2>Made by players. Here for the community.</h2><p class="muted">Mana Hoard is an independent UK trading card shop where fantasy, strategy and collecting meet. We specialise in Magic: The Gathering, with a particular passion for Commander, and every card is checked and packed by hand.</p><a class="btn ghost" href="#about">Our story</a></div>
+   <div class="tri"><div class="box"><h3>Commander</h3><p>Focused curation</p></div><div class="box"><h3>Community</h3><p>Real-player support</p></div><div class="box"><h3>Care</h3><p>Every order packed thoughtfully</p></div></div></div></section>`}
 
 function shopFiltered(list){
   const q=shop.q.trim().toLowerCase();
   const out=list.filter(p=>(shop.cat==='All'||p.cat===shop.cat)&&(!shop.stock||p.qty>0)&&(shop.finish==='All'||(shop.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(shop.cond==='All'||p.cond===shop.cond)&&(shop.set==='All'||p.set===shop.set)&&(!q||`${p.name} ${p.set} ${p.setName} ${p.rarity} ${p.finish}`.toLowerCase().includes(q)));
   const f={'price-low':(a,b)=>a.price-b.price,'price-high':(a,b)=>b.price-a.price,alpha:(a,b)=>a.name.localeCompare(b.name),newest:(a,b)=>(b.added||0)-(a.added||0)}[shop.sort];
   return out.sort(f)}
+const activeFilters=()=>(shop.finish!=='All')+(shop.cond!=='All')+(shop.set!=='All')+(shop.stock?1:0);
 function pShop(){
-  const {list,demo}=catalogue();const sets=[...new Set(list.map(p=>p.set))].sort();
-  return `<section class="band wrap"><div class="head"><div><h1>Find your next treasure.</h1><p class="muted" style="max-width:40em">Browse Magic singles, Commander staples, sealed product and accessories from a real UK shop built by players.</p></div></div>
-  <div class="shop"><aside class="filters" aria-label="Filters">
-   <div><label class="l" for="fq">Search</label><input id="fq" type="search" placeholder="Name, set or rarity" value="${esc(shop.q)}"></div>
-   <div><span class="l">Category</span><div class="chips">${['All',...CATS].map(c=>`<button class="chip" data-fcat="${c}" aria-pressed="${shop.cat===c}">${c}</button>`).join('')}</div></div>
-   <div><span class="l">Finish</span><div class="chips">${['All','Foil','Non-foil'].map(c=>`<button class="chip" data-ffin="${c}" aria-pressed="${shop.finish===c}">${c}</button>`).join('')}</div></div>
+  const {list}=catalogue();const sets=[...new Set(list.map(p=>p.set))].sort();
+  return `<section class="wrap shophead"><h1>The Hoard</h1><p class="muted">Singles, Commander staples, sealed product and accessories, condition-checked and priced in pounds.</p></section>
+  <div class="toolbar"><div class="wrap tb">
+   <input id="fq" type="search" placeholder="Search cards, sets or rarity" value="${esc(shop.q)}" aria-label="Search the Hoard" autocomplete="off">
+   <button class="btn ghost sm" id="openFilters" aria-controls="filters">Filters<span class="count" id="fcount"${activeFilters()?'':' hidden'}>${activeFilters()}</span></button>
+   <select id="fsort" aria-label="Sort by">${[['newest','Newest first'],['price-low','Price: low to high'],['price-high','Price: high to low'],['alpha','A to Z']].map(([k,v])=>`<option value="${k}"${shop.sort===k?' selected':''}>${v}</option>`).join('')}</select></div>
+   <div class="wrap catrow" role="group" aria-label="Category">${['All',...CATS].map(c=>`<button class="chip" data-fcat="${c}" aria-pressed="${shop.cat===c}">${c==='All'?'Everything':c}</button>`).join('')}</div></div>
+  <div class="wrap shop"><aside class="filters" id="filters" aria-label="Filters">
+   <div class="fhead"><h2>Filters</h2><button class="x" id="closeFilters" aria-label="Close filters">×</button></div>
+   <div><span class="l">Finish</span><div class="chips">${['All','Foil','Non-foil'].map(c=>`<button class="chip" data-ffin="${c}" aria-pressed="${shop.finish===c}">${c==='All'?'Any':c}</button>`).join('')}</div></div>
    <div><label class="l" for="fcond">Condition</label><select id="fcond"><option value="All">Any condition</option>${Object.entries(CONDS).map(([k,v])=>`<option value="${k}"${shop.cond===k?' selected':''}>${v}</option>`).join('')}</select></div>
    <div><label class="l" for="fset">Set</label><select id="fset"><option value="All">All sets</option>${sets.map(s=>`<option${shop.set===s?' selected':''}>${esc(s)}</option>`).join('')}</select></div>
    <label class="check"><input type="checkbox" id="fstock"${shop.stock?' checked':''}> In stock only</label>
-   <div><label class="l" for="fsort">Sort by</label><select id="fsort">${[['newest','Newest'],['price-low','Price: low to high'],['price-high','Price: high to low'],['alpha','Alphabetical']].map(([k,v])=>`<option value="${k}"${shop.sort===k?' selected':''}>${v}</option>`).join('')}</select></div>
-  </aside><div id="results"></div></div></section>`}
+   <button class="linkbtn" id="freset2" style="justify-self:start">Clear all filters</button>
+   <button class="btn gold sheetonly" id="applyFilters">Show results</button>
+  </aside><div id="results"></div></div>`}
 function renderResults(){
   const el=$('#results');if(!el)return;const {list,demo}=catalogue();const r=shopFiltered(list);
-  el.innerHTML=`<div class="bar"><span class="muted">${r.length} result${r.length===1?'':'s'}${demo?' · sample stock':''}</span><button class="linkbtn" id="freset">Reset filters</button></div>
-  ${r.length?`<div class="grid">${r.slice(0,shop.shown).map(pcard).join('')}</div>${r.length>shop.shown?`<p style="text-align:center;margin-top:20px"><button class="btn ghost" id="more">Show more (${r.length-shop.shown} left)</button></p>`:''}`:'<div class="empty"><h3>No matching treasures found.</h3><p>Try a different search or clear the filters to view the whole hoard.</p></div>'}`}
+  const n=activeFilters(),fc=$('#fcount');if(fc){fc.textContent=n;fc.hidden=!n}
+  const ap=$('#applyFilters');if(ap)ap.textContent=`Show ${r.length} result${r.length===1?'':'s'}`;
+  el.innerHTML=`<div class="bar"><span class="muted">${r.length} treasure${r.length===1?'':'s'}${demo?' · sample stock':''}</span>${n||shop.q||shop.cat!=='All'?'<button class="linkbtn" id="freset">Reset</button>':''}</div>
+  ${r.length?`<div class="grid">${r.slice(0,shop.shown).map(pcard).join('')}</div>${r.length>shop.shown?`<p style="text-align:center;margin-top:22px"><button class="btn ghost" id="more">Show more (${r.length-shop.shown} left)</button></p>`:''}`:'<div class="empty"><h3>No matching treasures found.</h3><p>Try a different search or clear the filters to see the whole hoard.</p></div>'}`}
+function openFilters(on){const f=$('#filters');if(!f)return;f.classList.toggle('open',on);$('#scrim').classList.toggle('on',on||$('#drawer').classList.contains('open'))}
 
 function pCommander(){
   const {list}=catalogue();const cmd=list.filter(p=>p.cat==='Commander').sort((a,b)=>b.price-a.price);
@@ -349,7 +362,7 @@ const bQty=()=>basket.reduce((s,b)=>s+b.qty,0);
 function addToBasket(id,n=1){const l=byId(id);if(!l||l.qty<=0)return;const b=basket.find(x=>x.id===id);const have=b?b.qty:0;const q=Math.min(l.qty,have+n);
   if(b)b.qty=q;else basket.push({id,qty:q});store.set('mh-basket',basket);renderBasket();toast(`${l.name} added to your basket`)}
 function renderBasket(){
-  basket=basket.filter(b=>byId(b.id));$('#bcount').textContent=bQty();
+  basket=basket.filter(b=>byId(b.id));$('#bcount').textContent=bQty();{const c2=$('#bcount2');if(c2){c2.textContent=bQty();c2.hidden=!bQty()}}
   const lines=basket.map(b=>({b,l:byId(b.id)}));const sub=lines.reduce((s,{b,l})=>s+l.price*b.qty,0);
   $('#dbody').innerHTML=lines.length?lines.map(({b,l})=>`<div class="line">${art(l)}<div><b>${esc(l.name)}</b><br><span class="muted small">${esc(l.set)} · ${esc(l.cond)} · ${esc(l.finish)} · ${gbp(l.price)}</span></div>
    <div class="qty"><button data-bq="${esc(b.id)}" data-d="-1" aria-label="One fewer">−</button><span>${b.qty}</span><button data-bq="${esc(b.id)}" data-d="1" aria-label="One more"${b.qty>=l.qty?' disabled':''}>+</button></div></div>`).join(''):'<div class="empty" style="margin-top:20px"><h3>Your basket is empty</h3><p>Find something legendary in the Hoard.</p></div>';
@@ -370,8 +383,7 @@ function openCard(id){const l=byId(id);if(!l)return;const d=$('#dlg');const inB=
   d.innerHTML=`<div style="position:relative"><button class="x" data-close aria-label="Close">×</button><div class="dlg"><div>${art(l,true)}${l.artist?`<p class="muted small" style="margin:8px 0 0">Illustrated by ${esc(l.artist)}</p>`:''}${/^https:\/\/scryfall\.com\//.test(l.sfUri||'')?`<p class="small" style="margin:4px 0 0"><a href="${esc(l.sfUri)}" target="_blank" rel="noopener">View on Scryfall ↗</a></p>`:''}</div><div>
    <span class="pill">${esc(l.cat)}</span><h2 style="margin-top:10px">${esc(l.name)}</h2><p class="muted">${esc(l.setName||l.set)}</p>
    <dl><dt>Set</dt><dd>${esc(l.set)}${l.num?' #'+esc(l.num):''}</dd><dt>Condition</dt><dd>${esc(CONDS[l.cond]||l.cond)}</dd><dt>Finish</dt><dd>${esc(l.finish)}</dd>${l.tline?`<dt>Type</dt><dd>${esc(l.tline)}</dd>`:''}<dt>Rarity</dt><dd style="text-transform:capitalize">${esc(rk(l.rarity))}</dd><dt>Language</dt><dd>${esc((l.lang||'en').toUpperCase())}</dd><dt>In stock</dt><dd>${l.qty}</dd></dl>
-   <p class="price" style="font-size:28px;margin:8px 0 16px">${gbp(l.price)}</p>
-   <div class="row"><button class="btn gold" data-add="${esc(l.id)}"${l.qty<=inB?' disabled':''}>${l.qty<=0?'Sold out':l.qty<=inB?'All in your basket':'Add to basket'}</button>${inB?`<span class="muted">${inB} in basket</span>`:''}</div></div></div></div>`;
+   <div class="buy"><span class="price" style="font-size:28px">${gbp(l.price)}</span><button class="btn gold" data-add="${esc(l.id)}"${l.qty<=inB?' disabled':''}>${l.qty<=0?'Sold out':l.qty<=inB?'All in your basket':'Add to basket'}</button>${inB?`<span class="muted">${inB} in basket</span>`:''}</div></div></div></div>`;
   d.showModal()}
 
 /* ---------- router ---------- */
@@ -379,7 +391,7 @@ const ROUTES={home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbo
 function route(){const r=location.hash.slice(1);return ROUTES[r]?r:'home'}
 function render(scroll){const r=route();renderNav(r);$('#view').innerHTML=ROUTES[r]();if(r==='shop')renderResults();{const d=$('#demo');if(d)d.hidden=r==='manager'}if(scroll)window.scrollTo(0,0)}
 function rerenderSoft(){const r=route();if(r==='shop')renderResults();else if(r==='manager'){const p=$('#mpanel');if(p&&document.activeElement&&p.contains(document.activeElement)&&document.activeElement.matches('input,select'))return;render(false)}else render(false);renderBasket()}
-addEventListener('hashchange',()=>render(true));
+addEventListener('hashchange',()=>{if($('#drawer').classList.contains('open'))openDrawer(false);if($('#dlg').open)$('#dlg').close();render(true)});
 
 /* ---------- events ---------- */
 document.addEventListener('click',async e=>{const t=e.target.closest('button,a');if(!t)return;
@@ -391,7 +403,10 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.dataset.ffin){shop.finish=t.dataset.ffin;shop.shown=48;document.querySelectorAll('[data-ffin]').forEach(b=>b.setAttribute('aria-pressed',b===t));renderResults();return}
   if(t.id==='freset'){shop={q:'',cat:'All',stock:false,sort:'newest',finish:'All',cond:'All',set:'All',shown:48};render(false);return}
   if(t.id==='more'){shop.shown+=48;renderResults();return}
-  if(t.id==='openBasket'){openDrawer(true);return}if(t.id==='closeBasket'){openDrawer(false);return}
+  if(t.id==='openBasket'||t.id==='openBasket2'){openDrawer(true);return}
+  if(t.id==='openFilters'){openFilters(true);return}
+  if(t.id==='closeFilters'||t.id==='applyFilters'){openFilters(false);return}
+  if(t.id==='freset2'){shop={...shop,finish:'All',cond:'All',set:'All',stock:false,shown:48};render(false);openFilters(true);return}if(t.id==='closeBasket'){openDrawer(false);return}
   if(t.dataset.bq){const b=basket.find(x=>x.id===t.dataset.bq);if(b){b.qty+=+t.dataset.d;if(b.qty<=0)basket=basket.filter(x=>x!==b);store.set('mh-basket',basket);renderBasket()}return}
   if(t.id==='sendReq'){sendRequest();return}
   if(t.id==='copyReq'){toast(await copy(summary())?'Order summary copied':'Copy was blocked — select the basket text instead');return}
@@ -428,10 +443,10 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.id==='cpStock'){toast(await copy(stockJSON())?'JSON copied':'Copy was blocked');return}
   if(t.id==='resetWork'||t.id==='resetWork2'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to confirm';return}S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);S.basedOn=PUB.updated;S.stale=false;save();render(false);toast('Working copy reset to the live shop');return}
 });
-$('#scrim').addEventListener('click',()=>openDrawer(false));
+$('#scrim').addEventListener('click',()=>{openFilters(false);openDrawer(false)});
 document.addEventListener('load',e=>{const t=e.target;if(t.classList&&t.classList.contains('cimg'))t.parentElement.classList.add('loaded')},true);
 document.addEventListener('error',e=>{const t=e.target;if(t.classList&&(t.classList.contains('cimg')||t.classList.contains('thumb')))t.remove()},true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#drawer').classList.contains('open'))openDrawer(false)});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('#drawer').classList.contains('open'))openDrawer(false);if($('#filters.open'))openFilters(false)});
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')$('#dlg').close()});
 let qt;document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='fq'){clearTimeout(qt);qt=setTimeout(()=>{shop.q=t.value;shop.shown=48;renderResults()},150)}
@@ -446,7 +461,7 @@ document.addEventListener('change',async e=>{const t=e.target;
   if(t.dataset.set){const k=t.dataset.set,v=parseFloat(t.value)||0,s=S.settings;
     if(k==='markup')s.markup=v;else if(k==='foil')s.foil=v;else if(k==='min')s.min=Math.round(v*100);else if(k.startsWith('floor_'))s.floor[k.slice(6)]=Math.round(v*100);else if(k.startsWith('cond_'))s.cond[k.slice(5)]=v;markDirty()}
 });
-document.addEventListener('submit',async e=>{if(e.target.id!=='cform')return;e.preventDefault();
+document.addEventListener('submit',async e=>{if(e.target.id==='hsearch'){e.preventDefault();shop={...shop,q:$('#hq').value.trim(),cat:'All',shown:48};location.hash='shop';if(route()==='shop')render(true);return}if(e.target.id!=='cform')return;e.preventDefault();
   const m=`To: ${CONFIG.shopEmail}\nSubject: ${$('#ctype').value}\n\n${$('#cmsg').value}\n\n${$('#cname').value}\n${$('#cmail').value}`;
   $('#cstatus').textContent=(await copy(m))?`Message copied — paste it into an email to ${CONFIG.shopEmail}. Nothing has been sent yet.`:`Copy was blocked — please email ${CONFIG.shopEmail} directly.`});
 
