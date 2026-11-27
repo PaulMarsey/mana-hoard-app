@@ -43,7 +43,13 @@
    "price": 4675,
    "cat": "Singles",
    "live": true,
-   "added": 1795779000000
+   "added": 1795779000000,
+   "img": "https://cards.scryfall.io/normal/front/7/f/7ffdca9d-3ee4-4572-b1ad-4f03523968fd.jpg?1783902840",
+   "imgL": "https://cards.scryfall.io/large/front/7/f/7ffdca9d-3ee4-4572-b1ad-4f03523968fd.jpg?1783902840",
+   "sid": "7ffdca9d-3ee4-4572-b1ad-4f03523968fd",
+   "sfUri": "https://scryfall.com/card/msh/387/captain-america-super-soldier?utm_source=api",
+   "artist": "Jack Kirby & John Romita Sr.",
+   "tline": "Legendary Creature — Human Soldier Hero"
   },
   {
    "id": "msh-2",
@@ -59,7 +65,13 @@
    "price": 3995,
    "cat": "Commander",
    "live": true,
-   "added": 1795778940000
+   "added": 1795778940000,
+   "img": "https://cards.scryfall.io/normal/front/8/7/87f1e69a-6d74-4982-afda-82613637799a.jpg?1783902972",
+   "imgL": "https://cards.scryfall.io/large/front/8/7/87f1e69a-6d74-4982-afda-82613637799a.jpg?1783902972",
+   "sid": "87f1e69a-6d74-4982-afda-82613637799a",
+   "sfUri": "https://scryfall.com/card/msh/21/the-mind-stone?utm_source=api",
+   "artist": "Volkan Baǵa",
+   "tline": "Legendary Artifact — Infinity Stone"
   },
   {
    "id": "msh-3",
@@ -75,7 +87,13 @@
    "price": 2150,
    "cat": "Singles",
    "live": true,
-   "added": 1795778880000
+   "added": 1795778880000,
+   "img": "https://cards.scryfall.io/normal/front/e/e/eeedc3a9-e5c0-4234-8653-1a005df095e1.jpg?1783902861",
+   "imgL": "https://cards.scryfall.io/large/front/e/e/eeedc3a9-e5c0-4234-8653-1a005df095e1.jpg?1783902861",
+   "sid": "eeedc3a9-e5c0-4234-8653-1a005df095e1",
+   "sfUri": "https://scryfall.com/card/msh/346/king-tchalla-black-panther-hope-enduring?utm_source=api",
+   "artist": "Chris Bachalo & Johan Grenier",
+   "tline": "Legendary Creature — Human Noble Hero // Legendary Creature — Human Warrior Hero"
   },
   {
    "id": "msh-4",
@@ -91,7 +109,13 @@
    "price": 1595,
    "cat": "Commander",
    "live": true,
-   "added": 1795778820000
+   "added": 1795778820000,
+   "img": "https://cards.scryfall.io/normal/front/e/0/e0c7f566-5351-44e3-a346-b84b0eb10209.jpg?1783902926",
+   "imgL": "https://cards.scryfall.io/large/front/e/0/e0c7f566-5351-44e3-a346-b84b0eb10209.jpg?1783902926",
+   "sid": "e0c7f566-5351-44e3-a346-b84b0eb10209",
+   "sfUri": "https://scryfall.com/card/msh/146/mj%C3%B6lnir-hammer-of-thor?utm_source=api",
+   "artist": "Wayne Reynolds",
+   "tline": "Legendary Artifact — Equipment"
   },
   {
    "id": "msh-5",
@@ -107,7 +131,13 @@
    "price": 1540,
    "cat": "Singles",
    "live": true,
-   "added": 1795778760000
+   "added": 1795778760000,
+   "img": "https://cards.scryfall.io/normal/front/b/e/be8177e1-b0b4-4c8f-90b9-034313c7b271.jpg?1783902860",
+   "imgL": "https://cards.scryfall.io/large/front/b/e/be8177e1-b0b4-4c8f-90b9-034313c7b271.jpg?1783902860",
+   "sid": "be8177e1-b0b4-4c8f-90b9-034313c7b271",
+   "sfUri": "https://scryfall.com/card/msh/336/doctor-doom?utm_source=api",
+   "artist": "Johan Grenier",
+   "tline": "Legendary Creature — Human Scientist Villain"
   },
   {
    "id": "msh-6",
@@ -123,7 +153,13 @@
    "price": 875,
    "cat": "Singles",
    "live": true,
-   "added": 1795778700000
+   "added": 1795778700000,
+   "img": "https://cards.scryfall.io/normal/front/c/d/cddd314c-c271-475a-b076-01a8599c8015.jpg?1783902923",
+   "imgL": "https://cards.scryfall.io/large/front/c/d/cddd314c-c271-475a-b076-01a8599c8015.jpg?1783902923",
+   "sid": "cddd314c-c271-475a-b076-01a8599c8015",
+   "sfUri": "https://scryfall.com/card/msh/156/thor-god-of-thunder?utm_source=api",
+   "artist": "Jesper Ejsing",
+   "tline": "Legendary Creature — God Warrior Hero"
   },
   {
    "id": "msh-7",
@@ -139,7 +175,13 @@
    "price": 865,
    "cat": "Commander",
    "live": true,
-   "added": 1795778640000
+   "added": 1795778640000,
+   "img": "https://cards.scryfall.io/normal/front/d/1/d1cf1ead-fe91-4328-89ab-6d0bc9ff6cbe.jpg?1783902891",
+   "imgL": "https://cards.scryfall.io/large/front/d/1/d1cf1ead-fe91-4328-89ab-6d0bc9ff6cbe.jpg?1783902891",
+   "sid": "d1cf1ead-fe91-4328-89ab-6d0bc9ff6cbe",
+   "sfUri": "https://scryfall.com/card/msh/245/cosmic-cube?utm_source=api",
+   "artist": "Justyna Dura",
+   "tline": "Artifact"
   },
   {
    "id": "msh-8",
@@ -155,7 +197,13 @@
    "price": 845,
    "cat": "Singles",
    "live": true,
-   "added": 1795778580000
+   "added": 1795778580000,
+   "img": "https://cards.scryfall.io/normal/front/3/2/32ddd5ac-57ed-4e78-8932-a65980191f6e.jpg?1783902889",
+   "imgL": "https://cards.scryfall.io/large/front/3/2/32ddd5ac-57ed-4e78-8932-a65980191f6e.jpg?1783902889",
+   "sid": "32ddd5ac-57ed-4e78-8932-a65980191f6e",
+   "sfUri": "https://scryfall.com/card/msh/252/ultron-artificial-malevolence?utm_source=api",
+   "artist": "Nino Is",
+   "tline": "Legendary Artifact Creature — Robot Villain"
   },
   {
    "id": "msh-9",
@@ -171,7 +219,13 @@
    "price": 315,
    "cat": "Singles",
    "live": true,
-   "added": 1795778520000
+   "added": 1795778520000,
+   "img": "https://cards.scryfall.io/normal/front/3/3/33631d6c-c584-42ff-afe5-2647b5fb321f.jpg?1783902981",
+   "imgL": "https://cards.scryfall.io/large/front/3/3/33631d6c-c584-42ff-afe5-2647b5fb321f.jpg?1783902981",
+   "sid": "33631d6c-c584-42ff-afe5-2647b5fb321f",
+   "sfUri": "https://scryfall.com/card/msh/9/captain-america-super-soldier?utm_source=api",
+   "artist": "Anna Podedworna",
+   "tline": "Legendary Creature — Human Soldier Hero"
   },
   {
    "id": "msh-10",
@@ -187,7 +241,13 @@
    "price": 265,
    "cat": "Commander",
    "live": true,
-   "added": 1795778460000
+   "added": 1795778460000,
+   "img": "https://cards.scryfall.io/normal/front/3/6/361c2f3b-f04e-446b-a683-9195e238daf0.jpg?1783902891",
+   "imgL": "https://cards.scryfall.io/large/front/3/6/361c2f3b-f04e-446b-a683-9195e238daf0.jpg?1783902891",
+   "sid": "361c2f3b-f04e-446b-a683-9195e238daf0",
+   "sfUri": "https://scryfall.com/card/msh/248/iron-man-armor?utm_source=api",
+   "artist": "Javier Charro",
+   "tline": "Artifact — Equipment"
   },
   {
    "id": "msh-11",
@@ -203,7 +263,13 @@
    "price": 245,
    "cat": "Singles",
    "live": true,
-   "added": 1795778400000
+   "added": 1795778400000,
+   "img": "https://cards.scryfall.io/normal/front/9/b/9b1f213a-e1d4-4a0f-954b-c83915698d98.jpg?1783902944",
+   "imgL": "https://cards.scryfall.io/large/front/9/b/9b1f213a-e1d4-4a0f-954b-c83915698d98.jpg?1783902944",
+   "sid": "9b1f213a-e1d4-4a0f-954b-c83915698d98",
+   "sfUri": "https://scryfall.com/card/msh/95/doctor-doom?utm_source=api",
+   "artist": "David Palumbo",
+   "tline": "Legendary Creature — Human Scientist Villain"
   },
   {
    "id": "msh-12",
@@ -219,7 +285,13 @@
    "price": 150,
    "cat": "Commander",
    "live": true,
-   "added": 1795778340000
+   "added": 1795778340000,
+   "img": "https://cards.scryfall.io/normal/front/b/f/bf736399-af74-4f52-9159-67ea67d0cf83.jpg?1783902981",
+   "imgL": "https://cards.scryfall.io/large/front/b/f/bf736399-af74-4f52-9159-67ea67d0cf83.jpg?1783902981",
+   "sid": "bf736399-af74-4f52-9159-67ea67d0cf83",
+   "sfUri": "https://scryfall.com/card/msh/6/avengers-assemble!?utm_source=api",
+   "artist": "Alex Horley-Orlandelli",
+   "tline": "Enchantment"
   },
   {
    "id": "msh-13",
@@ -235,7 +307,13 @@
    "price": 145,
    "cat": "Singles",
    "live": true,
-   "added": 1795778280000
+   "added": 1795778280000,
+   "img": "https://cards.scryfall.io/normal/front/6/3/63ce0909-7d7d-410d-ab6c-c87fa3e23877.jpg?1783902946",
+   "imgL": "https://cards.scryfall.io/large/front/6/3/63ce0909-7d7d-410d-ab6c-c87fa3e23877.jpg?1783902946",
+   "sid": "63ce0909-7d7d-410d-ab6c-c87fa3e23877",
+   "sfUri": "https://scryfall.com/card/msh/89/black-widow-super-spy?utm_source=api",
+   "artist": "Dan Brereton",
+   "tline": "Legendary Creature — Human Spy Hero"
   },
   {
    "id": "msh-14",
@@ -251,7 +329,13 @@
    "price": 145,
    "cat": "Commander",
    "live": true,
-   "added": 1795778220000
+   "added": 1795778220000,
+   "img": "https://cards.scryfall.io/normal/front/0/8/081cdbd0-5081-4a9e-90ba-f5baf4ac137e.jpg?1783902886",
+   "imgL": "https://cards.scryfall.io/large/front/0/8/081cdbd0-5081-4a9e-90ba-f5baf4ac137e.jpg?1783902886",
+   "sid": "081cdbd0-5081-4a9e-90ba-f5baf4ac137e",
+   "sfUri": "https://scryfall.com/card/msh/266/gathering-place?utm_source=api",
+   "artist": "Pablo Mendoza",
+   "tline": "Land"
   },
   {
    "id": "msh-play-box",
