@@ -95,6 +95,13 @@ TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTr
 
 **Privacy:** purchase prices (`buyPrice` or cost) are never written to the published `stock.json`. This repository is public, and files uploaded to `data/powertools/` stay in its history. Remove private columns before uploading, or use options 1 or 3.
 
+### Collections (the glowing jars)
+**Hoard Manager → Collections.** Each collection is a jar on the home page and a filter in the shop. A collection gathers cards by rules (categories, foil, rarity, set, price range, "name contains") plus any cards you **hand-pick**. Rename it, pick its jar colour, reorder or remove it, then **Publish**. The starter set is Budget Commander, Staples under £2, Foil treasures, Mythic vault, Marvel Super Heroes and Sealed treasures. Empty jars are hidden from shoppers.
+
+### Orders and invoices with your logo
+- **Customers:** the basket has **View & print order summary**, a branded order sheet with your logo, a reference number (e.g. `MH-YXWPPB`) and their note. They can print it, save it as a PDF, or email it. The emailed order quotes the same reference.
+- **You:** **Hoard Manager → Invoices.** Add the customer's details, search your stock to add cards, set postage, then **Preview & print invoice** (save as PDF to attach to your email) or **Copy email text**. **Mark these cards sold** reduces stock and moves to the next invoice number. Your business details (address, how to pay) are saved in your browser only and never published.
+
 ### Selling elsewhere
 **Marketplace export** builds:
 - a **Cardmarket stock sheet** (Cardmarket condition codes, language, foil flag, quantity, price in GBP), and
@@ -102,7 +109,7 @@ TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTr
 
 ## How orders work right now
 
-There's no payment step. The basket's **Email this order** button opens the customer's email app with their order filled in, addressed to `shopEmail`. You confirm stock and postage and send an invoice (for example a PayPal or Stripe payment link), then lower the quantities in the manager and publish.
+There's no payment step. The basket's **Email this order** button opens the customer's email app with their order and reference filled in, addressed to `shopEmail`. You confirm stock and postage, send an invoice from **Invoices** (with a PayPal or bank-transfer note), mark the cards sold, and publish.
 
 ## Upgrade path
 

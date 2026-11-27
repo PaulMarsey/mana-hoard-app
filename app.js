@@ -20,7 +20,14 @@ const CONDDESC={MT:'Flawless, straight from the pack.',NM:'Practically perfect. 
 const LANGS={en:'English',de:'German',fr:'French',it:'Italian',es:'Spanish',pt:'Portuguese',ja:'Japanese',ko:'Korean',ru:'Russian',zhs:'Chinese (S)',zht:'Chinese (T)'};
 const condTone=c=>({MT:'g',NM:'g',EX:'l',GD:'a',LP:'a',PL:'o',PO:'r'}[c]||'a');
 const CATS=['Singles','Commander','Sealed','Accessories'];
-const DEFAULTS={markup:30,foil:1.5,min:10,floor:{common:10,uncommon:20,rare:50,mythic:150,special:100},cond:{MT:1,NM:1,EX:.9,GD:.8,LP:.7,PL:.55,PO:.35},pt:{rate:0.85,priceMode:'keep',zeroMissing:true,newLive:true,last:null}};
+const DEFAULTS={markup:30,foil:1.5,min:10,floor:{common:10,uncommon:20,rare:50,mythic:150,special:100},cond:{MT:1,NM:1,EX:.9,GD:.8,LP:.7,PL:.55,PO:.35},pt:{rate:0.85,priceMode:'keep',zeroMissing:true,newLive:true,last:null},
+ collections:[
+  {id:'budget-commander',name:'Budget Commander',hue:42,cats:['Commander'],max:300},
+  {id:'staples-2',name:'Staples under £2',hue:140,cats:['Singles','Commander'],max:200},
+  {id:'foil-treasures',name:'Foil treasures',hue:300,finish:'Foil'},
+  {id:'mythic-vault',name:'Mythic vault',hue:18,rarity:'mythic'},
+  {id:'marvel',name:'Marvel Super Heroes',hue:200,set:'MSH'},
+  {id:'sealed',name:'Sealed treasures',hue:265,cats:['Sealed']}]};
 const DEMO=[{"id":"d1","name":"Captain America, Super-Soldier","set":"MSH","setName":"Marvel Super Heroes","num":"387","finish":"Foil","rarity":"mythic","cond":"NM","lang":"en","qty":1,"price":4675,"cost":3900,"cat":"Singles","live":true,"added":8},
  {"id":"d2","name":"The Mind Stone","set":"MSH","setName":"Marvel Super Heroes","num":"21","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":2,"price":3995,"cost":3100,"cat":"Commander","live":true,"added":7},
  {"id":"d3","name":"Mjölnir, Hammer of Thor","set":"MSH","setName":"Marvel Super Heroes","num":"146","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":3,"price":1595,"cost":1250,"cat":"Commander","live":true,"added":6},
@@ -42,7 +49,7 @@ Death to Our Enemies,MSH,Marvel Super Heroes,,normal,,2,208,,0.25,false,false,ne
 let S={items:[],settings:structuredClone(DEFAULTS),dirty:false,loaded:false,canManage:true};
 let PUB={items:[],settings:structuredClone(DEFAULTS),updated:null,ok:false};
 let basket=store.get('mh-basket',[]);
-const SHOP0={q:'',cat:'All',stock:false,sort:'newest',finish:'All',cond:'All',set:'All',lang:'All',rarity:'All',max:0,shown:48};
+const SHOP0={col:'',q:'',cat:'All',stock:false,sort:'newest',finish:'All',cond:'All',set:'All',lang:'All',rarity:'All',max:0,shown:48};
 let shop={...SHOP0};
 let mgr={pt:null,tab:'import',preview:null,q:'',filter:'all',shown:100};
 
@@ -76,17 +83,14 @@ const NAV=[['shop','The Hoard'],['commander','Commander'],['tales','Tales from t
 function renderNav(r){$('#nav').innerHTML=NAV.map(([k,t])=>`<a href="#${k}"${r===k?' aria-current="page"':''}>${t}</a>`).join('');
   document.querySelectorAll('#tabbar a').forEach(a=>{if(a.getAttribute('href')==='#'+r)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
 
-const JARS=list=>{
-  const sets={};list.forEach(p=>{if(p.set&&isCard(p))sets[p.set]=(sets[p.set]||{n:0,name:p.setName||p.set}),sets[p.set].n++});
-  const top=Object.entries(sets).sort((a,b)=>b[1].n-a[1].n)[0];
-  const n=f=>list.filter(f).length;
-  return [
-   ['Commander',42,{cat:'Commander'},n(p=>p.cat==='Commander')],
-   ['Foils',300,{finish:'Foil'},n(p=>isFoil(p.finish))],
-   ['Mythics',18,{rarity:'mythic'},n(p=>rk(p.rarity)==='mythic')],
-   ...(top?[[top[1].name.length>16?top[0]:top[1].name,200,{set:top[0]},top[1].n]]:[]),
-   ['Under £5',140,{max:500},n(p=>p.price<=500)],
-   ['Sealed',265,{cat:'Sealed'},n(p=>p.cat==='Sealed')]].filter(j=>j[3]>0)};
+/* ---------- collections (the jars) ---------- */
+const colNorm=c=>({id:'c'+Math.random().toString(36).slice(2,8),name:'New collection',hue:42,cats:[],finish:'All',rarity:'All',set:'All',min:0,max:0,q:'',ids:[],...(c||{})});
+const colHasRule=c=>c.cats.length||c.finish!=='All'||c.rarity!=='All'||c.set!=='All'||c.min||c.max||c.q;
+function colMatch(c,p){
+  if(c.ids.includes(p.id))return true;if(!colHasRule(c))return false;
+  return (!c.cats.length||c.cats.includes(p.cat))&&(c.finish==='All'||(c.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(c.rarity==='All'||rk(p.rarity)===c.rarity)&&(c.set==='All'||p.set===c.set)&&(!c.min||p.price>=c.min)&&(!c.max||p.price<=c.max)&&(!c.q||String(p.name).toLowerCase().includes(String(c.q).toLowerCase()))}
+const pubCols=()=>((PUB.ok&&Array.isArray(PUB.settings.collections))?PUB.settings.collections:DEFAULTS.collections).map(colNorm);
+const JARS=list=>pubCols().map(c=>[c,list.filter(p=>colMatch(c,p)).length]).filter(x=>x[1]>0).slice(0,8);
 function pHome(){
   const {list,demo}=catalogue();const fav=[...list].sort((a,b)=>b.price-a.price).slice(0,4);const recent=[...list].sort((a,b)=>(b.added||0)-(a.added||0)).slice(0,6);
   const singles=[...list].filter(isCard).sort((a,b)=>(!!sfImg(b.img)-!!sfImg(a.img))||(b.price-a.price));
@@ -102,7 +106,7 @@ function pHome(){
    <div class="trust"><span>Every card checked by hand</span><span>Priced in pounds</span><span>Packed with care</span></div></div>
    <div class="scene">${HoardArt.burrowBack()}<div class="scards">${heroCards.map(c=>`<button class="scard" data-open="${esc(c.id)}" aria-label="${esc(c.name)}">${art(c)}</button>`).join('')}</div>${HoardArt.burrowFront()}${motes}</div></div></section>
   ${jars.length?`<section class="band wrap"><div class="head"><h2>Browse the shelves</h2><a href="#shop">Everything →</a></div>
-   <div class="shelf">${jars.map((j,i)=>`<button class="jarbtn" data-jar="${i}" aria-label="${esc(j[0])}: ${j[3]} item${j[3]===1?'':'s'}">${HoardArt.jar(j[0],j[1],.35+((j[3]%7)/12),`${j[3]} in the hoard`)}</button>`).join('')}</div></section>`:''}
+   <div class="shelf">${jars.map(([c,n])=>`<button class="jarbtn" data-jar="${esc(c.id)}" aria-label="${esc(c.name)}: ${n} item${n===1?'':'s'}">${HoardArt.jar(c.name,c.hue,.35+((n%7)/12),`${n} in the hoard`)}</button>`).join('')}</div></section>`:''}
   <section class="surface"><div class="band wrap"><div class="head"><h2>Treasures of the hoard</h2><a href="#shop">See all →</a></div>
    ${demo?'<p class="muted small" style="margin-top:-10px">Sample stock, shown until real listings go live.</p>':''}
    ${treasures.length?`<div class="grid rail">${treasures.map(pcard).join('')}</div>`:'<div class="empty"><h3>The Hoard is being stocked.</h3><p>New cards are on their way — check back soon.</p></div>'}</div></section>
@@ -113,7 +117,8 @@ function pHome(){
 
 function shopFiltered(list){
   const q=shop.q.trim().toLowerCase();
-  const out=list.filter(p=>(shop.cat==='All'||p.cat===shop.cat)&&(shop.lang==='All'||(p.lang||'en')===shop.lang)&&(shop.rarity==='All'||rk(p.rarity)===shop.rarity)&&(!shop.max||p.price<=shop.max)&&(!shop.stock||p.qty>0)&&(shop.finish==='All'||(shop.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(shop.cond==='All'||p.cond===shop.cond)&&(shop.set==='All'||p.set===shop.set)&&(!q||`${p.name} ${p.set} ${p.setName} ${p.rarity} ${p.finish}`.toLowerCase().includes(q)));
+  const col=shop.col&&pubCols().find(c=>c.id===shop.col);
+  const out=list.filter(p=>(!col||colMatch(col,p))&&(shop.cat==='All'||p.cat===shop.cat)&&(shop.lang==='All'||(p.lang||'en')===shop.lang)&&(shop.rarity==='All'||rk(p.rarity)===shop.rarity)&&(!shop.max||p.price<=shop.max)&&(!shop.stock||p.qty>0)&&(shop.finish==='All'||(shop.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(shop.cond==='All'||p.cond===shop.cond)&&(shop.set==='All'||p.set===shop.set)&&(!q||`${p.name} ${p.set} ${p.setName} ${p.rarity} ${p.finish}`.toLowerCase().includes(q)));
   const f={'price-low':(a,b)=>a.price-b.price,'price-high':(a,b)=>b.price-a.price,alpha:(a,b)=>a.name.localeCompare(b.name),newest:(a,b)=>(b.added||0)-(a.added||0)}[shop.sort];
   return out.sort(f)}
 const activeFilters=()=>(shop.finish!=='All')+(shop.cond!=='All')+(shop.set!=='All')+(shop.lang!=='All')+(shop.rarity!=='All')+(shop.max?1:0)+(shop.stock?1:0);
@@ -128,6 +133,7 @@ function pShop(){
   <div class="wrap shop"><aside class="filters" id="filters" aria-label="Filters">
    <div class="fhead"><h2>Filters</h2><button class="x" id="closeFilters" aria-label="Close filters">×</button></div>
    <div><span class="l">Finish</span><div class="chips">${['All','Foil','Non-foil'].map(c=>`<button class="chip" data-ffin="${c}" aria-pressed="${shop.finish===c}">${c==='All'?'Any':c}</button>`).join('')}</div></div>
+   <div><label class="l" for="fcol">Collection</label><select id="fcol"><option value="">All collections</option>${pubCols().map(c=>`<option value="${esc(c.id)}"${shop.col===c.id?' selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
    <div><label class="l" for="fmax">Price</label><select id="fmax">${[[0,'Any price'],[100,'Up to £1'],[500,'Up to £5'],[1000,'Up to £10'],[2500,'Up to £25'],[5000,'Up to £50']].map(([v,t])=>`<option value="${v}"${shop.max===v?' selected':''}>${t}</option>`).join('')}</select></div>
    <div><span class="l">Rarity</span><div class="chips">${[['All','Any'],['common','Common'],['uncommon','Uncommon'],['rare','Rare'],['mythic','Mythic']].map(([v,t])=>`<button class="chip" data-frar="${v}" aria-pressed="${shop.rarity===v}">${t}</button>`).join('')}</div></div>
    <div><label class="l" for="fcond">Condition</label><select id="fcond"><option value="All">Any condition</option>${Object.entries(CONDS).map(([k,v])=>`<option value="${k}"${shop.cond===k?' selected':''}>${v}</option>`).join('')}</select></div>
@@ -141,7 +147,8 @@ function renderResults(){
   const el=$('#results');if(!el)return;const {list,demo}=catalogue();const r=shopFiltered(list);
   const n=activeFilters(),fc=$('#fcount');if(fc){fc.textContent=n;fc.hidden=!n}
   const ap=$('#applyFilters');if(ap)ap.textContent=`Show ${r.length} result${r.length===1?'':'s'}`;
-  el.innerHTML=`<div class="bar"><span class="muted">${r.length} treasure${r.length===1?'':'s'}${demo?' · sample stock':''}</span>${n||shop.q||shop.cat!=='All'?'<button class="linkbtn" id="freset">Reset</button>':''}</div>
+  const col=shop.col&&pubCols().find(c=>c.id===shop.col);
+  el.innerHTML=`${col?`<div class="colbanner" style="--hue:${+col.hue||42}"><span class="dot"></span><span>Collection: <b>${esc(col.name)}</b></span><button class="linkbtn" id="clearCol" aria-label="Show all cards">Show everything ×</button></div>`:''}<div class="bar"><span class="muted">${r.length} treasure${r.length===1?'':'s'}${demo?' · sample stock':''}</span>${n||shop.q||shop.cat!=='All'||shop.col?'<button class="linkbtn" id="freset">Reset</button>':''}</div>
   ${r.length?`<div class="grid">${r.slice(0,shop.shown).map(pcard).join('')}</div>${r.length>shop.shown?`<p style="text-align:center;margin-top:22px"><button class="btn ghost" id="more">Show more (${r.length-shop.shown} left)</button></p>`:''}`:'<div class="empty"><h3>No matching treasures found.</h3><p>Try a different search or clear the filters to see the whole hoard.</p></div>'}`}
 function openFilters(on){const f=$('#filters');if(!f)return;f.classList.toggle('open',on);$('#scrim').classList.toggle('on',on||$('#drawer').classList.contains('open'))}
 
@@ -178,11 +185,11 @@ function pManager(){
   if(!S.canManage)return `<section class="band wrap"><h1>Hoard Manager</h1><p class="muted">Only the shop owner and editors can manage stock.</p></section>`;
   const it=S.items,live=it.filter(i=>i.live);
   const val=live.reduce((s,i)=>s+i.price*i.qty,0),cards=it.reduce((s,i)=>s+i.qty,0);
-  const tabs=[['import','Import from ManaBox'],['powertools','TCG PowerTools'],['listings','Listings'],['pricing','Pricing rules'],['publish','Publish'+(unpublished()?' •':'')],['export','Marketplace export']];
+  const tabs=[['import','Import from ManaBox'],['powertools','TCG PowerTools'],['listings','Listings'],['collections','Collections'],['pricing','Pricing rules'],['publish','Publish'+(unpublished()?' •':'')],['export','Marketplace export'],['invoices','Invoices']];
   return `<section class="band wrap"><div class="head"><div><h1>Hoard Manager</h1><p class="muted" style="max-width:46em">This is your working copy, saved in this browser. Customers see <code>${esc(CONFIG.stockFile)}</code>${PUB.updated?` (published ${esc(new Date(PUB.updated).toLocaleString('en-GB'))})`:''} — use <b>Publish</b> to update it.</p>${S.stale?`<p class="note" style="margin-top:10px">The live shop’s stock changed after you started this working copy (for example a TCG PowerTools sync or new images). <button class="linkbtn" id="resetWork2">Reset to published stock</button> to pick those changes up before editing.</p>`:''}</div><span id="savestate" class="pill${unpublished()?' low':''}">${unpublished()?'Unpublished changes':'Matches the live shop'}</span></div>
   <div class="stats"><div class="stat"><b>${it.length}</b><span>listings</span></div><div class="stat"><b>${cards}</b><span>cards in stock</span></div><div class="stat"><b>${live.length}</b><span>live in the shop</span></div><div class="stat"><b>${gbp(val)}</b><span>live stock value</span></div></div>
   <div class="tabs" role="tablist">${tabs.map(([k,t])=>`<button role="tab" data-tab="${k}" aria-selected="${mgr.tab===k}">${t}</button>`).join('')}</div>
-  <div id="mpanel">${({import:mImport,powertools:mPowerTools,listings:mListings,pricing:mPricing,publish:mPublish,export:mExport})[mgr.tab]()}</div></section>`}
+  <div id="mpanel">${({collections:mCollections,invoices:mInvoices,import:mImport,powertools:mPowerTools,listings:mListings,pricing:mPricing,publish:mPublish,export:mExport})[mgr.tab]()}</div></section>`}
 
 function mImport(){
   const p=mgr.preview;
@@ -388,13 +395,112 @@ function renderBasket(){
   $('#dbody').innerHTML=lines.length?lines.map(({b,l})=>`<div class="line">${art(l)}<div><b>${esc(l.name)}</b><br><span class="muted small">${esc(l.set)} · ${esc(l.cond)} · ${esc(l.finish)} · ${gbp(l.price)}</span></div>
    <div class="qty"><button data-bq="${esc(b.id)}" data-d="-1" aria-label="One fewer">−</button><span>${b.qty}</span><button data-bq="${esc(b.id)}" data-d="1" aria-label="One more"${b.qty>=l.qty?' disabled':''}>+</button></div></div>`).join(''):'<div class="empty" style="margin-top:20px"><h3>Your basket is empty</h3><p>Find something legendary in the Hoard.</p></div>';
   $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div><p class="muted small" style="margin:0">Send your basket by email and the shop will confirm stock, delivery and payment.</p>
-   <div><label class="l" for="bnote">Note (optional)</label><input type="text" id="bnote" placeholder="e.g. combine postage with last order"></div>
-   <button class="btn gold" id="sendReq">Email this order</button><button class="btn ghost" id="copyReq">Copy order summary</button>
+   <div><label class="l" for="bnote">Note (optional)</label><input type="text" id="bnote" placeholder="e.g. combine postage with last order" value="${esc(store.get('mh-note',''))}"></div>
+   <button class="btn gold" id="sendReq">Email this order</button><a class="btn ghost" href="#order">View &amp; print order summary</a>
    <p class="muted small" style="margin:0">Or send it to ${esc(CONFIG.shopEmail)}</p>`:''}
 function summary(){return basket.map(b=>{const l=byId(b.id);return `${b.qty} x ${l.name} (${l.set} ${l.num||''}, ${l.cond}, ${l.finish}) @ ${gbp(l.price)}`}).join('\n')+`\nSubtotal: ${gbp(basket.reduce((s,b)=>s+byId(b.id).price*b.qty,0))}`}
 function sendRequest(){
-  const note=($('#bnote')||{}).value||'';const body=`Hello Mana Hoard,\n\nI'd like to order:\n\n${summary()}\n${note?`\nNote: ${note}\n`:''}\nThanks!`;
-  location.href=`mailto:${CONFIG.shopEmail}?subject=${encodeURIComponent('Mana Hoard order')}&body=${encodeURIComponent(body)}`}
+  const n=$('#bnote');if(n)store.set('mh-note',n.value);const note=store.get('mh-note','');const ref=orderRef();
+  const body=`Hello Mana Hoard,\n\nI'd like to order (ref ${ref}):\n\n${summary()}\n${note?`\nNote: ${note}\n`:''}\nThanks!`;
+  location.href=`mailto:${CONFIG.shopEmail}?subject=${encodeURIComponent('Mana Hoard order '+ref)}&body=${encodeURIComponent(body)}`}
+function orderRef(){let r=store.get('mh-ref','');if(!r){r='MH-'+Date.now().toString(36).toUpperCase().slice(-6);store.set('mh-ref',r)}return r}
+
+/* ---------- manager: collections ---------- */
+function mCollections(){
+  const cols=S.settings.collections,items=S.items,sets=[...new Set(items.map(p=>p.set).filter(Boolean))].sort();
+  const sel=(cf,val,opts)=>`<select data-cf="${cf}">${opts.map(([v,t])=>`<option value="${esc(v)}"${String(val)===String(v)?' selected':''}>${esc(t)}</option>`).join('')}</select>`;
+  return `<div class="bar"><p class="muted" style="margin:0;max-width:46em">Collections are the glowing jars on the home page and a filter in the shop. Each one gathers cards by rules (category, foil, rarity, set, price, name), plus any cards you pick by hand. Publish to put changes live.</p><button class="btn gold sm" id="addCol">Add a collection</button></div>
+  ${cols.length?cols.map((c,i)=>{const hits=items.filter(p=>colMatch(c,p));return `<div class="colcard box" data-col="${esc(c.id)}">
+   <div class="coljar">${HoardArt.jar(c.name||'Untitled',c.hue,.6,`${hits.length} card${hits.length===1?'':'s'}`)}
+    <div class="row" style="justify-content:center;margin-top:6px"><button class="btn ghost sm" data-colmove="-1"${i?'':' disabled'} aria-label="Move up">↑</button><button class="btn ghost sm" data-colmove="1"${i<cols.length-1?'':' disabled'} aria-label="Move down">↓</button><button class="btn ghost sm" data-coldel>Remove</button></div></div>
+   <div class="colform">
+    <div class="two" style="gap:12px"><div><label class="l">Name</label><input type="text" data-cf="name" value="${esc(c.name)}" maxlength="28"></div>
+     <div><label class="l">Jar colour</label><input type="range" data-cf="hue" min="0" max="359" value="${+c.hue||0}" class="hue" style="--hue:${+c.hue||0}"></div></div>
+    <div><span class="l">Categories <span class="muted small">(none ticked = all)</span></span><div class="chips">${CATS.map(k=>`<label class="chip ck"><input type="checkbox" data-cf="cats" value="${k}"${c.cats.includes(k)?' checked':''}> ${k}</label>`).join('')}</div></div>
+    <div class="colgrid">
+     <div><label class="l">Finish</label>${sel('finish',c.finish,[['All','Any'],['Foil','Foil / etched'],['Non-foil','Non-foil']])}</div>
+     <div><label class="l">Rarity</label>${sel('rarity',c.rarity,[['All','Any'],['common','Common'],['uncommon','Uncommon'],['rare','Rare'],['mythic','Mythic']])}</div>
+     <div><label class="l">Set</label>${sel('set',c.set,[['All','Any set'],...sets.map(x=>[x,x])])}</div>
+     <div><label class="l">From £</label><input type="number" min="0" step="0.5" data-cf="min" value="${c.min?(c.min/100).toFixed(2):''}" placeholder="0"></div>
+     <div><label class="l">Up to £</label><input type="number" min="0" step="0.5" data-cf="max" value="${c.max?(c.max/100).toFixed(2):''}" placeholder="no limit"></div>
+     <div><label class="l">Name contains</label><input type="text" data-cf="q" value="${esc(c.q)}" placeholder="e.g. Signet"></div>
+    </div>
+    <details class="picker"><summary>Hand-picked cards (${c.ids.length})</summary>
+     <input type="search" class="pickq" placeholder="Search your listings" aria-label="Search listings to pick">
+     <div class="picklist">${[...items].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<label class="pick" data-n="${esc((p.name+' '+p.set).toLowerCase())}"><input type="checkbox" data-cf="ids" value="${esc(p.id)}"${c.ids.includes(p.id)?' checked':''}> ${esc(p.name)} <span class="muted small">${esc(p.set)} · ${esc(p.cond)}${isFoil(p.finish)?' · foil':''} · ${gbp(p.price)}</span></label>`).join('')}</div>
+    </details>
+    <p class="muted small" style="margin:0">${hits.length?`In this jar: ${hits.slice(0,6).map(p=>esc(p.name)).join(', ')}${hits.length>6?` and ${hits.length-6} more`:''}.`:'No cards match yet: loosen the rules or hand-pick some.'}</p>
+   </div></div>`}).join(''):'<div class="empty"><h3>No collections yet</h3><p>Add one to put a glowing jar on the home page.</p></div>'}`}
+function colChange(t){
+  const card=t.closest('[data-col]');if(!card)return false;const c=S.settings.collections.find(x=>x.id===card.dataset.col);if(!c)return true;
+  const f=t.dataset.cf;
+  if(f==='cats'){c.cats=[...card.querySelectorAll('[data-cf=cats]:checked')].map(x=>x.value)}
+  else if(f==='ids'){c.ids=t.checked?[...new Set([...c.ids,t.value])]:c.ids.filter(x=>x!==t.value)}
+  else if(f==='min'||f==='max'){c[f]=Math.max(0,Math.round((parseFloat(t.value)||0)*100))}
+  else if(f==='hue'){c.hue=+t.value}
+  else c[f]=t.value.slice(0,40);
+  markDirty();
+  if(f==='ids'){const sm=card.querySelector('.picker summary');if(sm)sm.textContent=`Hand-picked cards (${c.ids.length})`;return true}
+  const open=card.querySelector('.picker')?.open;render(false);if(open){const p=document.querySelector(`[data-col="${CSS.escape(c.id)}"] .picker`);if(p)p.open=true}
+  return true}
+
+/* ---------- manager: invoices (business details stay in this browser) ---------- */
+const bizDefault=()=>({name:'Mana Hoard',addr:'',email:CONFIG.shopEmail,pay:'',thanks:'Thank you for adding to your hoard!',next:1001});
+let biz={...bizDefault(),...store.get('mh-biz',{})};
+let inv={cust:'',email:'',addr:'',lines:[],post:0,note:'',...store.get('mh-inv',{})};
+const saveInv=()=>{store.set('mh-inv',inv);store.set('mh-biz',biz)};
+const invSub=()=>inv.lines.reduce((s,l)=>s+l.price*l.qty,0);
+function mInvoices(){
+  const q=(mgr.invq||'').toLowerCase();const hits=q?S.items.filter(p=>p.qty>0&&(p.name+' '+p.set).toLowerCase().includes(q)).slice(0,8):[];
+  const f=(k,lab,obj,ph='',type='text')=>`<div><label class="l">${lab}</label><input type="${type}" data-${obj}="${k}" value="${esc((obj==='inv'?inv:biz)[k])}" placeholder="${esc(ph)}"></div>`;
+  return `<div class="two"><div style="display:grid;gap:14px;align-content:start">
+    <h2>Invoice MH-${biz.next}</h2>
+    <div class="box" style="display:grid;gap:12px"><b>Bill to</b>${f('cust','Customer name','inv')}${f('email','Email','inv','','email')}
+     <div><label class="l">Address</label><textarea data-inv="addr" rows="3">${esc(inv.addr)}</textarea></div></div>
+    <div class="box" style="display:grid;gap:12px"><b>Cards</b>
+     <input type="search" id="invq" placeholder="Search your stock to add a card" value="${esc(mgr.invq||'')}" autocomplete="off">
+     ${hits.length?`<div class="tbl"><table><tbody>${hits.map(p=>`<tr><td>${esc(p.name)} <span class="muted small">${esc(p.set)} · ${esc(p.cond)}${isFoil(p.finish)?' · foil':''}</span></td><td class="n">${gbp(p.price)}</td><td class="n"><button class="btn sm" data-invadd="${esc(p.id)}">Add</button></td></tr>`).join('')}</tbody></table></div>`:q?'<p class="muted small" style="margin:0">No stock matches that.</p>':''}
+     ${inv.lines.length?`<div class="tbl"><table><thead><tr><th>Card</th><th class="n">Qty</th><th class="n">Price £</th><th></th></tr></thead><tbody>${inv.lines.map((l,i)=>`<tr><td>${esc(l.name)}<br><span class="muted small">${esc(l.set)} · ${esc(l.cond)}${isFoil(l.finish)?' · foil':''}</span></td><td class="n"><input type="number" min="1" data-il="qty" data-i="${i}" value="${l.qty}" style="width:64px"></td><td class="n"><input type="number" min="0" step="0.01" data-il="price" data-i="${i}" value="${(l.price/100).toFixed(2)}"></td><td><button class="linkbtn" data-ilrm="${i}" style="color:var(--warn)">Remove</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted small" style="margin:0">No cards on this invoice yet.</p>'}
+     <div class="colgrid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><label class="l">Postage £</label><input type="number" min="0" step="0.01" data-inv="post" value="${(inv.post/100).toFixed(2)}"></div><div><label class="l">Total</label><div class="price" style="font-size:24px;padding-top:6px">${gbp(invSub()+inv.post)}</div></div></div>
+     <div><label class="l">Note on the invoice (optional)</label><input type="text" data-inv="note" value="${esc(inv.note)}" placeholder="e.g. Sent Royal Mail tracked"></div></div>
+    <div class="row"><a class="btn gold" href="#invoice">Preview &amp; print invoice</a><button class="btn ghost" id="invEmail">Copy email text</button></div>
+    <div class="row"><button class="btn ghost" id="invSold"${inv.lines.length?'':' disabled'}>Mark these cards sold &amp; start next invoice</button><button class="linkbtn" id="invClear">Clear invoice</button></div>
+   </div>
+   <div style="display:grid;gap:14px;align-content:start"><div class="box" style="display:grid;gap:12px"><b>Your details on invoices</b><p class="muted small" style="margin:0">Saved in this browser only, never published (your shop's stock file is public).</p>
+    ${f('name','Business name','biz')}<div><label class="l">Address</label><textarea data-biz="addr" rows="3" placeholder="Shown on invoices">${esc(biz.addr)}</textarea></div>${f('email','Email','biz')}
+    <div><label class="l">How to pay</label><textarea data-biz="pay" rows="3" placeholder="e.g. PayPal (friends & family not accepted) to payments@… or bank transfer: sort code / account">${esc(biz.pay)}</textarea></div>
+    ${f('thanks','Thank-you line','biz')}${f('next','Next invoice number','biz','','number')}</div></div></div>`}
+function invEmail(){const no='MH-'+biz.next;return `Hi ${inv.cust||'there'},\n\nThank you for your order! Here's invoice ${no}:\n\n${inv.lines.map(l=>`${l.qty} x ${l.name} (${l.set}, ${l.cond}${isFoil(l.finish)?', foil':''}) @ ${gbp(l.price)}`).join('\n')}\nPostage: ${gbp(inv.post)}\nTotal: ${gbp(invSub()+inv.post)}\n\n${biz.pay?`How to pay:\n${biz.pay}\n\n`:''}I'll post your cards as soon as payment arrives.\n\n${biz.thanks}\n${biz.name}`}
+
+/* ---------- printable sheets ---------- */
+const sheetLogo=`<picture><source srcset="assets/logo-small.webp" type="image/webp"><img src="assets/logo-small.png" alt="Mana Hoard" width="160" height="148"></picture>`;
+const today=()=>new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+function sheetTable(lines){return `<table class="stable"><thead><tr><th>Card</th><th>Set</th><th>Cond.</th><th class="n">Qty</th><th class="n">Price</th><th class="n">Total</th></tr></thead><tbody>${lines.map(l=>`<tr><td><b>${esc(l.name)}</b>${isFoil(l.finish)?` <span class="sfoil">${esc(l.finish)}</span>`:''}</td><td>${esc(l.set)}${l.num?' #'+esc(l.num):''}</td><td>${esc(l.cond)}</td><td class="n">${l.qty}</td><td class="n">${gbp(l.price)}</td><td class="n">${gbp(l.price*l.qty)}</td></tr>`).join('')}</tbody></table>`}
+function pOrder(){
+  const lines=basket.map(b=>{const l=byId(b.id);return l&&{...l,qty:b.qty}}).filter(Boolean);
+  if(!lines.length)return `<section class="band wrap"><div class="empty"><h3>Your basket is empty</h3><p>Add some treasures and your order summary will appear here.</p><p><a class="btn gold" href="#shop">Explore the Hoard</a></p></div></section>`;
+  const sub=lines.reduce((s,l)=>s+l.price*l.qty,0),note=store.get('mh-note','');
+  return `<section class="band wrap sheetwrap"><div class="sheetbar noprint"><a class="linkbtn" href="#shop">← Back to the Hoard</a><div class="row"><button class="btn ghost" id="printSheet">Print or save as PDF</button><button class="btn gold" id="sendReq">Email this order</button></div></div>
+   <article class="sheet"><header class="shead">${sheetLogo}<div><h2>Order request</h2><p>Reference <b>${esc(orderRef())}</b><br>${today()}</p></div></header>
+    ${sheetTable(lines)}
+    <div class="stotal"><div><span>Subtotal</span><b>${gbp(sub)}</b></div><div><span>Postage</span><b>Confirmed by email</b></div></div>
+    ${note?`<p class="snote"><b>Your note:</b> ${esc(note)}</p>`:''}
+    <p class="snote">Send this order with <b>Email this order</b>, or email it to ${esc(CONFIG.shopEmail)} quoting the reference. We'll check every card, confirm postage and send an invoice. Nothing is charged yet.</p>
+    <p class="sthanks">Thank you for visiting the hoard!</p>
+    <footer class="sfoot">Mana Hoard · ${esc(CONFIG.shopEmail)}</footer></article></section>`}
+function pInvoice(){
+  if(!inv.lines.length)return `<section class="band wrap"><div class="empty"><h3>This invoice has no cards yet</h3><p>Build it in the Hoard Manager first.</p><p><a class="btn gold" href="#manager" data-tab="invoices">Open Invoices</a></p></div></section>`;
+  const sub=invSub();
+  return `<section class="band wrap sheetwrap"><div class="sheetbar noprint"><a class="linkbtn" href="#manager" data-tab="invoices">← Back to Invoices</a><div class="row"><button class="btn ghost" id="invEmail">Copy email text</button><button class="btn gold" id="printSheet">Print or save as PDF</button></div></div>
+   <article class="sheet"><header class="shead">${sheetLogo}<div><h2>Invoice</h2><p>No. <b>MH-${esc(biz.next)}</b><br>${today()}</p></div></header>
+    <div class="sparties"><div><span>From</span><b>${esc(biz.name)}</b>${esc(biz.addr).replace(/\n/g,'<br>')}${biz.email?`<br>${esc(biz.email)}`:''}</div>
+     <div><span>Bill to</span><b>${esc(inv.cust||'Customer')}</b>${esc(inv.addr).replace(/\n/g,'<br>')}${inv.email?`<br>${esc(inv.email)}`:''}</div></div>
+    ${sheetTable(inv.lines)}
+    <div class="stotal"><div><span>Subtotal</span><b>${gbp(sub)}</b></div><div><span>Postage</span><b>${gbp(inv.post)}</b></div><div class="grand"><span>Total due</span><b>${gbp(sub+inv.post)}</b></div></div>
+    ${inv.note?`<p class="snote">${esc(inv.note)}</p>`:''}
+    ${biz.pay?`<div class="spay"><b>How to pay</b><p>${esc(biz.pay).replace(/\n/g,'<br>')}</p><p class="muted">Please quote <b>MH-${esc(biz.next)}</b> with your payment.</p></div>`:''}
+    <p class="sthanks">${esc(biz.thanks)}</p>
+    <footer class="sfoot">${esc(biz.name)}${biz.email?` · ${esc(biz.email)}`:''}</footer></article></section>`}
 
 /* ---------- misc ---------- */
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
@@ -423,9 +529,9 @@ function openCard(id){const l=byId(id);if(!l)return;const d=$('#dlg');const inB=
   d.showModal()}
 
 /* ---------- router ---------- */
-const ROUTES={home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbout,contact:pContact,policies:pPolicies,manager:pManager};
+const ROUTES={order:pOrder,invoice:pInvoice,home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbout,contact:pContact,policies:pPolicies,manager:pManager};
 function route(){const r=location.hash.slice(1);return ROUTES[r]?r:'home'}
-function render(scroll){const r=route();renderNav(r);$('#view').innerHTML=ROUTES[r]();if(r==='shop')renderResults();{const d=$('#demo');if(d)d.hidden=r==='manager'}if(scroll)window.scrollTo(0,0)}
+function render(scroll){const r=route();renderNav(r);$('#view').innerHTML=ROUTES[r]();if(r==='shop')renderResults();{const d=$('#demo');if(d)d.hidden=r==='manager'||r==='invoice'||r==='order'}if(scroll)window.scrollTo(0,0)}
 function rerenderSoft(){const r=route();if(r==='shop')renderResults();else if(r==='manager'){const p=$('#mpanel');if(p&&document.activeElement&&p.contains(document.activeElement)&&document.activeElement.matches('input,select'))return;render(false)}else render(false);renderBasket()}
 addEventListener('hashchange',()=>{if($('#drawer').classList.contains('open'))openDrawer(false);if($('#dlg').open)$('#dlg').close();render(true)});
 
@@ -444,13 +550,24 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.id==='closeFilters'||t.id==='applyFilters'){openFilters(false);return}
   if(t.id==='freset2'){shop={...SHOP0,q:shop.q,cat:shop.cat,sort:shop.sort};render(false);openFilters(true);return}
   if(t.dataset.frar){shop.rarity=t.dataset.frar;shop.shown=48;document.querySelectorAll('[data-frar]').forEach(b=>b.setAttribute('aria-pressed',b===t));renderResults();return}
-  if(t.dataset.jar){const j=JARS(catalogue().list)[+t.dataset.jar];if(j){shop={...SHOP0,...j[2]};location.hash='shop';if(route()==='shop')render(true)}return}
+  if(t.dataset.jar){shop={...SHOP0,col:t.dataset.jar};location.hash='shop';if(route()==='shop')render(true);return}
+  if(t.id==='clearCol'){shop.col='';shop.shown=48;renderResults();const fc=$('#fcol');if(fc)fc.value='';return}
   if(t.id==='flip'){const w=t.closest('.dlg').querySelector('.flipbox');w.classList.toggle('back');t.textContent=w.classList.contains('back')?'Show front':'Show back';return}if(t.id==='closeBasket'){openDrawer(false);return}
   if(t.dataset.bq){const b=basket.find(x=>x.id===t.dataset.bq);if(b){b.qty+=+t.dataset.d;if(b.qty<=0)basket=basket.filter(x=>x!==b);store.set('mh-basket',basket);renderBasket()}return}
   if(t.id==='sendReq'){sendRequest();return}
+  if(t.id==='printSheet'){try{window.print()}catch{toast('Use your browser’s Print option to save it as a PDF')}return}
+  if(t.id==='addCol'){S.settings.collections.push(colNorm({name:'New collection',hue:Math.floor(Math.random()*360)}));markDirty();render(false);const all=document.querySelectorAll('.colcard');all[all.length-1]?.scrollIntoView({block:'center'});return}
+  if(t.dataset.colmove){const id=t.closest('[data-col]').dataset.col,a=S.settings.collections,i=a.findIndex(c=>c.id===id),j=i+(+t.dataset.colmove);if(j>=0&&j<a.length){[a[i],a[j]]=[a[j],a[i]];markDirty();render(false)}return}
+  if(t.hasAttribute('data-coldel')){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to remove';return}const id=t.closest('[data-col]').dataset.col;S.settings.collections=S.settings.collections.filter(c=>c.id!==id);markDirty();render(false);return}
+  if(t.dataset.invadd){const p=S.items.find(x=>x.id===t.dataset.invadd);if(p){const ex=inv.lines.find(l=>l.id===p.id);if(ex)ex.qty=Math.min(ex.qty+1,Math.max(1,p.qty));else inv.lines.push({id:p.id,name:p.name,set:p.set,num:p.num||'',cond:p.cond,finish:p.finish,qty:1,price:p.price});mgr.invq='';saveInv();render(false)}return}
+  if(t.dataset.ilrm){inv.lines.splice(+t.dataset.ilrm,1);saveInv();render(false);return}
+  if(t.id==='invEmail'){toast(await copy(invEmail())?'Invoice email copied — paste it into your email':'Copy was blocked');return}
+  if(t.id==='invClear'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to clear';return}inv={cust:'',email:'',addr:'',lines:[],post:0,note:''};saveInv();render(false);return}
+  if(t.id==='invSold'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again: reduce stock and start MH-'+(+biz.next+1);return}
+    inv.lines.forEach(l=>{const p=S.items.find(x=>x.id===l.id);if(p)p.qty=Math.max(0,p.qty-l.qty)});const done='MH-'+biz.next;biz.next=+biz.next+1;inv={cust:'',email:'',addr:'',lines:[],post:0,note:''};saveInv();markDirty();render(false);toast(`${done} done: stock reduced. Publish to update the shop.`);return}
   if(t.id==='copyReq'){toast(await copy(summary())?'Order summary copied':'Copy was blocked — select the basket text instead');return}
   // manager
-  if(t.dataset.tab){mgr.tab=t.dataset.tab;render(false);return}
+  if(t.dataset.tab){mgr.tab=t.dataset.tab;if(t.tagName==='A'&&route()!=='manager')return;render(false);return}
   if(t.id==='sample'){$('#paste').value=SAMPLE_CSV;return}
   if(t.id==='parse'){const r=readImport($('#paste').value);if(!r)toast('Paste a CSV with a header row first');else if(r.error)toast(r.error);else{mgr.preview=r;render(false)}return}
   if(t.id==='discard'){mgr.preview=null;render(false);return}
@@ -488,10 +605,19 @@ document.addEventListener('error',e=>{const t=e.target;if(t.classList&&(t.classL
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('#drawer').classList.contains('open'))openDrawer(false);if($('#filters.open'))openFilters(false)});
 $('#dlg').addEventListener('click',e=>{if(e.target.id==='dlg')$('#dlg').close()});
 let qt;document.addEventListener('input',e=>{const t=e.target;
+  if(t.id==='bnote'){store.set('mh-note',t.value);return}
+  if(t.id==='invq'){clearTimeout(qt);qt=setTimeout(()=>{mgr.invq=t.value;render(false);const m=$('#invq');m.focus();m.setSelectionRange(m.value.length,m.value.length)},250);return}
+  if(t.classList.contains('pickq')){const q=t.value.toLowerCase();t.parentElement.querySelectorAll('.pick').forEach(r=>{r.hidden=!!q&&!r.dataset.n.includes(q)});return}
+  if(t.classList.contains('hue')){t.style.setProperty('--hue',t.value);return}
   if(t.id==='fq'){clearTimeout(qt);qt=setTimeout(()=>{shop.q=t.value;shop.shown=48;renderResults()},150)}
   if(t.id==='mq'){clearTimeout(qt);qt=setTimeout(()=>{mgr.q=t.value;mgr.shown=100;render(false);const m=$('#mq');m.focus();m.setSelectionRange(m.value.length,m.value.length)},250)}});
 document.addEventListener('change',async e=>{const t=e.target;
+  if(t.id==='fcol'){shop.col=t.value;shop.shown=48;renderResults()}
   if(t.id==='fcond'){shop.cond=t.value;renderResults()}if(t.id==='flang'){shop.lang=t.value;renderResults()}if(t.id==='fmax'){shop.max=+t.value;renderResults()}if(t.id==='fset'){shop.set=t.value;renderResults()}if(t.id==='fsort'){shop.sort=t.value;renderResults()}if(t.id==='fstock'){shop.stock=t.checked;renderResults()}
+  if(t.dataset&&t.dataset.cf){colChange(t);return}
+  if(t.dataset&&t.dataset.inv){const k=t.dataset.inv;inv[k]=k==='post'?Math.max(0,Math.round((parseFloat(t.value)||0)*100)):t.value;saveInv();if(k==='post')render(false);return}
+  if(t.dataset&&t.dataset.biz){const k=t.dataset.biz;biz[k]=k==='next'?Math.max(1,parseInt(t.value,10)||1):t.value;saveInv();if(k==='next')render(false);return}
+  if(t.dataset&&t.dataset.il){const l=inv.lines[+t.dataset.i];if(l){if(t.dataset.il==='qty')l.qty=Math.max(1,parseInt(t.value,10)||1);else l.price=Math.max(0,Math.round((parseFloat(t.value)||0)*100));saveInv();render(false)}return}
   if(t.id==='ptfile'&&t.files[0]){const r=PowerToolsSync.readPowerTools(await t.files[0].text());if(r.error){toast(r.error);return}mgr.pt=r;ptPreview();render(false);return}
   if(t.dataset.pt){const k=t.dataset.pt,o=S.settings.pt=S.settings.pt||structuredClone(DEFAULTS.pt);o[k]=t.type==='checkbox'?t.checked:k==='rate'?Math.max(0,parseFloat(t.value)||0):t.value;markDirty();if(mgr.pt){ptPreview();render(false)}return}
   if(t.id==='file'&&t.files[0]){const txt=await t.files[0].text();const r=readImport(txt);if(!r||r.error){toast(r?r.error:'That file looks empty');return}mgr.preview=r;render(false)}
@@ -508,12 +634,13 @@ document.addEventListener('submit',async e=>{if(e.target.id==='hsearch'){e.preve
 const clean=a=>(Array.isArray(a)?a:[]).filter(x=>x&&x.id&&x.name).map(x=>({...x,qty:+x.qty||0,price:+x.price||0}));
 async function boot(){
   try{const r=await fetch(CONFIG.stockFile,{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();
-    PUB={items:clean(j.items),settings:{...structuredClone(DEFAULTS),...(j.settings||{})},updated:j.updated||null,ok:true};PUB.settings.pt={...structuredClone(DEFAULTS.pt),...((j.settings||{}).pt||{})}}
+    PUB={items:clean(j.items),settings:{...structuredClone(DEFAULTS),...(j.settings||{})},updated:j.updated||null,ok:true};PUB.settings.pt={...structuredClone(DEFAULTS.pt),...((j.settings||{}).pt||{})};PUB.settings.collections=(Array.isArray((j.settings||{}).collections)?j.settings.collections:structuredClone(DEFAULTS.collections)).map(colNorm)}
   catch{PUB.ok=false;console.warn('Could not load',CONFIG.stockFile,'— showing sample stock. Serve the site over http(s), not file://.')}
   const w=store.get('mh-work',null);
   if(w&&Array.isArray(w.items)){S.items=clean(w.items);S.settings={...structuredClone(DEFAULTS),...(w.settings||{})};S.basedOn=w.basedOn||null;S.settings.pt={...structuredClone(DEFAULTS.pt),...(S.settings.pt||{})};
     S.stale=!!(PUB.ok&&PUB.updated&&(!S.basedOn||Date.parse(PUB.updated)>Date.parse(S.basedOn))&&unpublished())}
   else{S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);S.basedOn=PUB.updated}
+  S.settings.collections=(Array.isArray(S.settings.collections)?S.settings.collections:structuredClone(DEFAULTS.collections)).map(colNorm);
   S.loaded=true;render(false);renderBasket()}
 if(CONFIG.demoBanner)$('#demo').textContent=CONFIG.demoBanner;else $('#demo').remove();
 $('#femail').textContent=CONFIG.shopEmail;
