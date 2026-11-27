@@ -8,7 +8,9 @@ const CONFIG={
   cardImages:true,                        // show Scryfall card images (false = drawn card frames only)
   // postage shown to shoppers: keep in step with SHIPPING / FREE_SHIP_OVER in checkout-worker/wrangler.toml
   freePostageOver:3000,                   // pence: free postage on baskets of £30+ (0 = off)
-  postage:[{name:'Royal Mail 2nd Class',price:150,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'}],
+  postage:[{name:'Royal Mail 2nd Class',price:195,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'}],
+  minOrder:200,                           // pence: smallest basket you'll post (0 = off). Keep in step with MIN_ORDER in wrangler.toml
+  splash:true,                            // little opening animation when the site or app starts
   dispatchPromise:'Order by 2pm Mon–Fri, posted the same day',
   packingPromise:['Every single sleeved and toploadered','Condition checked by hand','Posted from the UK by Royal Mail','Same-day dispatch before 2pm'],
   // reviews: add your links when you have them (shown as buttons; nothing is invented)
@@ -99,7 +101,7 @@ function promiseItems(){return (CONFIG.packingPromise||[]).map((t,i)=>`<li><svg 
 function postageBar(sub){
   const f=+CONFIG.freePostageOver||0;if(!f)return '';
   const pct=Math.min(100,Math.round(sub/f*100));
-  return `<div class="shipbar${sub>=f?' done':''}"><div class="shiptext">${sub>=f?'<b>You’ve unlocked free postage!</b>':`<b>${gbp(f-sub)}</b> away from free postage`}</div><div class="shiptrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div></div>`}
+  return `<div class="shipbar${sub>=f?' done':''}"><div class="shiptext">${sub>=f?'<b>You’ve unlocked free 2nd Class postage!</b>':`<b>${gbp(f-sub)}</b> away from free postage`}</div><div class="shiptrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div></div>`}
 function reviewsBand(){
   const r=CONFIG.reviews||{};if(!r.trustpilotUrl&&!r.googleReviewsUrl)return '';
   return `<section class="band wrap reviews"><div class="box" style="text-align:center;display:grid;gap:10px;justify-items:center"><h2>What adventurers say</h2><p class="muted" style="margin:0">Read honest reviews from people who’ve shopped the hoard, or leave your own.</p><div class="row" style="justify-content:center">${r.trustpilotUrl?`<a class="btn gold" href="${esc(r.trustpilotUrl)}" target="_blank" rel="noopener">Reviews on Trustpilot</a>`:''}${r.googleReviewsUrl?`<a class="btn ghost" href="${esc(r.googleReviewsUrl)}" target="_blank" rel="noopener">Reviews on Google</a>`:''}</div></div></section>`}
@@ -166,7 +168,7 @@ function pPolicies(){
   return `<section class="wrap shophead"><h1>Policies</h1><p class="muted">Delivery, returns, payments and privacy, in plain English.</p>${B.address?'':'<p class="note" style="margin-top:12px">Draft policies for the test phase: the shop owner still needs to add a business address and check these details before taking real orders.</p>'}</section>
   <section class="wrap policies">
    <article class="box" id="delivery"><h2>Delivery</h2>
-    <ul>${P.map(o=>`<li><b>${esc(o.name)}</b>: ${gbp(o.price)} (${esc(o.days)})</li>`).join('')}${free?`<li><b>Free postage</b> on orders of ${gbp(free)} or more.</li>`:''}</ul>
+    <ul>${P.map(o=>`<li><b>${esc(o.name)}</b>: ${gbp(o.price)} (${esc(o.days)})</li>`).join('')}${free?`<li><b>Free Royal Mail 2nd Class</b> on orders of ${gbp(free)} or more (Tracked 48 still available as an upgrade).</li>`:''}${CONFIG.minOrder?`<li>Minimum order ${gbp(CONFIG.minOrder)}.</li>`:''}</ul>
     <p>${CONFIG.dispatchPromise?`${esc(CONFIG.dispatchPromise)}. Orders placed later, at weekends or on bank holidays go out the next working day.`:'We aim to post every order within 1–2 working days.'} You choose your postage at checkout.</p>
     <p>Every single is posted in a penny sleeve and toploader inside a rigid mailer; sealed product is packed so it arrives in the condition it left. We post to UK addresses only for now.</p>
     <p>If your order hasn’t arrived within 10 working days of dispatch, email us at ${em}. We’ll trace it with Royal Mail and send a replacement or a full refund.</p></article>
@@ -212,7 +214,7 @@ function pHome(){
    <p class="tagline">Every card has a <em>legend</em>.</p>
    <p class="lead">Curl up in the hoard. Singles, Commander staples and sealed Magic: The Gathering, gathered and cared for by an independent UK shop run by a player.</p>
    <form class="hsearch" id="hsearch" role="search"><input type="search" id="hq" placeholder="What are you hunting for?" aria-label="Search cards" autocomplete="off"><button class="btn gold" type="submit">Search</button></form>
-   <div class="trust"><span>${esc(CONFIG.dispatchPromise||'Packed with care')}</span>${CONFIG.freePostageOver?`<span>Free postage over ${gbp(CONFIG.freePostageOver).replace('.00','')}</span>`:''}<span>Priced in pounds</span></div></div>
+   <div class="trust"><span>${esc(CONFIG.dispatchPromise||'Packed with care')}</span>${CONFIG.freePostageOver?`<span>Free UK postage over ${gbp(CONFIG.freePostageOver).replace('.00','')}</span>`:''}<span>Priced in pounds</span></div></div>
    <div class="scene">${HoardArt.burrowBack()}<div class="scards">${heroCards.map(c=>`<button class="scard" data-open="${esc(c.id)}" aria-label="${esc(c.name)}">${art(c)}</button>`).join('')}</div>${HoardArt.burrowFront()}${motes}</div></div></section>
   <section class="promisebar"><ul class="promise wrap">${promiseItems()}</ul></section>
   ${jars.length?`<section class="band wrap"><div class="head"><h2>Browse the shelves</h2><a href="#shop">Everything →</a></div>
@@ -502,16 +504,17 @@ const bQty=()=>basket.reduce((s,b)=>s+b.qty,0);
 function addToBasket(id,n=1){const l=byId(id);if(!l||l.qty<=0)return;const b=basket.find(x=>x.id===id);const have=b?b.qty:0;const q=Math.min(l.qty,have+n);
   if(b)b.qty=q;else basket.push({id,qty:q});store.set('mh-basket',basket);renderBasket();toast(`${l.name} added to your basket`)}
 function renderBasket(){
-  basket=basket.filter(b=>byId(b.id));$('#bcount').textContent=bQty();{const c2=$('#bcount2');if(c2){c2.textContent=bQty();c2.hidden=!bQty()}}
-  const lines=basket.map(b=>({b,l:byId(b.id)}));const sub=lines.reduce((s,{b,l})=>s+l.price*b.qty,0);
+  if(PUB.ok){const n=basket.length;basket=basket.filter(b=>byId(b.id));if(basket.length!==n)store.set('mh-basket',basket)}$('#bcount').textContent=bQty();{const c2=$('#bcount2');if(c2){c2.textContent=bQty();c2.hidden=!bQty()}}
+  const lines=basket.map(b=>({b,l:byId(b.id)})).filter(x=>x.l);const sub=lines.reduce((s,{b,l})=>s+l.price*b.qty,0);
   $('#dbody').innerHTML=lines.length?lines.map(({b,l})=>`<div class="line">${art(l)}<div><b>${esc(l.name)}</b><br><span class="muted small">${esc(l.set)} · ${esc(l.cond)} · ${esc(l.finish)} · ${gbp(l.price)}</span></div>
    <div class="qty"><button data-bq="${esc(b.id)}" data-d="-1" aria-label="One fewer">−</button><span>${b.qty}</span><button data-bq="${esc(b.id)}" data-d="1" aria-label="One more"${b.qty>=l.qty?' disabled':''}>+</button></div></div>`).join(''):'<div class="empty" style="margin-top:20px"><h3>Your basket is empty</h3><p>Find something legendary in the Hoard.</p></div>';
   $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div>${postageBar(sub)}<p class="muted small" style="margin:0">${CONFIG.dispatchPromise?`<b>${esc(CONFIG.dispatchPromise)}.</b> `:''}${CONFIG.checkoutUrl?'Choose postage at checkout. Got a discount code? Add it on the payment page.':'Send your basket by email and the shop will confirm stock, delivery and payment.'}</p>
    <div><label class="l" for="bnote">Note (optional)</label><input type="text" id="bnote" placeholder="e.g. combine postage with last order" value="${esc(store.get('mh-note',''))}"></div>
-   ${CONFIG.checkoutUrl?`${payButton()}<button class="btn ghost" id="sendReq">Email this order instead</button>`:`<button class="btn gold" id="sendReq">Email this order</button>`}<a class="linkbtn" href="#order" style="text-align:center">View &amp; print order summary</a>
+   ${sub<(+CONFIG.minOrder||0)?`<p class="note" style="margin:0">Our minimum order is <b>${gbp(CONFIG.minOrder)}</b>: add <b>${gbp(CONFIG.minOrder-sub)}</b> more to check out.</p>`:`${CONFIG.checkoutUrl?`${payButton()}<button class="btn ghost" id="sendReq">Email this order instead</button>`:`<button class="btn gold" id="sendReq">Email this order</button>`}<a class="linkbtn" href="#order" style="text-align:center">View &amp; print order summary</a>`}
    ${CONFIG.checkoutUrl?'':`<p class="muted small" style="margin:0">Or send it to ${esc(CONFIG.shopEmail)}</p>`}`:''}
 function summary(){return basket.map(b=>{const l=byId(b.id);return `${b.qty} x ${l.name} (${l.set} ${l.num||''}, ${l.cond}, ${l.finish}) @ ${gbp(l.price)}`}).join('\n')+`\nSubtotal: ${gbp(basket.reduce((s,b)=>s+byId(b.id).price*b.qty,0))}`}
 function sendRequest(){
+  if(basket.reduce((s,b)=>s+(byId(b.id)?.price||0)*b.qty,0)<(+CONFIG.minOrder||0)){toast(`Minimum order is ${gbp(CONFIG.minOrder)}`);return}
   const n=$('#bnote');if(n)store.set('mh-note',n.value);const note=store.get('mh-note','');const ref=orderRef();
   const body=`Hello Mana Hoard,\n\nI'd like to order (ref ${ref}):\n\n${summary()}\n${note?`\nNote: ${note}\n`:''}\nThanks!`;
   location.href=`mailto:${CONFIG.shopEmail}?subject=${encodeURIComponent('Mana Hoard order '+ref)}&body=${encodeURIComponent(body)}`}
@@ -793,6 +796,7 @@ async function boot(){
 {const msg=CONFIG.demoBanner??(CONFIG.checkoutUrl?'Secure checkout by Stripe: pay by card, Apple Pay or Google Pay.':'Orders are confirmed by email. No payment is taken on this site yet.');if(msg)$('#demo').textContent=msg;else $('#demo').remove()}
 $('#femail').textContent=CONFIG.shopEmail;
 try{const q=new URLSearchParams(location.search);if(q.get('paid')){paidSession=q.get('paid');paidFromApp=q.get('app')==='1';paidRef=store.get('mh-paying','')||store.get('mh-ref','')||'your order';basket=[];['mh-basket','mh-ref','mh-note','mh-paying'].forEach(k=>{try{localStorage.removeItem(k)}catch{}});history.replaceState(null,'',location.pathname+'#thanks')}}catch{}
+if(!CONFIG.splash)document.getElementById("splash")?.remove();
 render(false);renderBasket();boot();
 if(paidFromApp&&!IN_APP&&/Android/i.test(navigator.userAgent))setTimeout(()=>{try{location.href=appReturnUrl()}catch{}},900);
 }

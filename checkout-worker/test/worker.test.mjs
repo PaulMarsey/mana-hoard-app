@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import worker from '../src/index.js';
 
 const stockFile = JSON.parse(await readFile(new URL('../../data/stock.json', import.meta.url), 'utf8'));
-const env = { SHOP_URL: 'https://paulmarsey.github.io/mana-hoard-app/', STOCK_URL: 'https://paulmarsey.github.io/mana-hoard-app/data/stock.json', GITHUB_REPO: 'PaulMarsey/mana-hoard-app', SHIP_COUNTRIES: 'GB', SHIPPING: '', FREE_SHIP_OVER: '3000', STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_test', GITHUB_TOKEN: 'ghp_x' };
+const env = { SHOP_URL: 'https://paulmarsey.github.io/mana-hoard-app/', STOCK_URL: 'https://paulmarsey.github.io/mana-hoard-app/data/stock.json', GITHUB_REPO: 'PaulMarsey/mana-hoard-app', SHIP_COUNTRIES: 'GB', SHIPPING: '', FREE_SHIP_OVER: '3000', MIN_ORDER: '200', STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_test', GITHUB_TOKEN: 'ghp_x' };
 let repo = JSON.parse(JSON.stringify(stockFile)), sha = 's1', lastSession = null, puts = 0;
 globalThis.fetch = async (url, opt = {}) => {
   url = String(url);
@@ -40,7 +40,17 @@ assert.equal(lastSession.get('payment_method_types[0]'), null, 'payment methods 
 assert.equal(lastSession.get('allow_promotion_codes'), 'true');
 console.log('✓ checkout session uses server prices, GBP, UK shipping, ref, wallets from Dashboard, discount codes on');
 // free shipping over £30
-assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), mjol.price + 2 * stockFile.items.find(i => i.id === 'msh-12').price >= 3000 ? '0' : '150');
+assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), mjol.price + 2 * stockFile.items.find(i => i.id === 'msh-12').price >= 3000 ? '0' : '195');
+// free postage makes 2nd Class free and keeps Tracked as a paid upgrade
+r = await call('/checkout', { items: [{ id: 'msh-1', qty: 1 }] }); assert.equal(r.status, 200);
+assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][display_name]'), 'Free Royal Mail 2nd Class');
+assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '0');
+assert.equal(lastSession.get('shipping_options[1][shipping_rate_data][fixed_amount][amount]'), '395');
+console.log('✓ over £30: free 2nd Class, Tracked 48 still £3.95');
+// minimum order
+r = await call('/checkout', { items: [{ id: 'msh-12', qty: 1 }] }); d = await r.json();
+assert.equal(r.status, 400); assert.match(d.error, /minimum order is £2.00/);
+console.log('✓ refuses baskets under the £2 minimum');
 // 2. too many / sold out / unknown
 r = await call('/checkout', { items: [{ id: 'msh-1', qty: 5 }, { id: 'nope', qty: 1 }] }); d = await r.json();
 assert.equal(r.status, 409); assert.equal(d.problems.length, 2); assert.match(d.problems[0].reason, /only 1 left/);

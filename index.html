@@ -22,6 +22,13 @@
 
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="splash-in">
+  <div class="splash-glow"></div>
+  <div class="splash-sparks"><i style="--x:18%;--d:0.15s;--s:7px"></i><i style="--x:30%;--d:0.55s;--s:5px"></i><i style="--x:42%;--d:0.3s;--s:9px"></i><i style="--x:55%;--d:0.7s;--s:6px"></i><i style="--x:64%;--d:0.2s;--s:8px"></i><i style="--x:74%;--d:0.5s;--s:5px"></i><i style="--x:84%;--d:0.35s;--s:7px"></i><i style="--x:50%;--d:0.9s;--s:6px"></i><i style="--x:24%;--d:0.8s;--s:6px"></i><i style="--x:70%;--d:0.95s;--s:8px"></i></div>
+  <picture><source srcset="assets/logo.webp" type="image/webp"><img class="splash-logo" src="assets/logo.png" alt="" width="260" height="240"></picture>
+  <p class="splash-tag">Every card has a legend</p>
+</div></div>
+<script>(function(){var s=document.getElementById('splash'),skip=/^#(order|invoice|thanks|manager)/.test(location.hash);try{if(sessionStorage.getItem('mh-splash'))skip=true;sessionStorage.setItem('mh-splash','1')}catch(e){}if(skip){s.remove();return}var t0=Date.now(),gone=false,done=function(){if(gone)return;gone=true;s.classList.add('out');setTimeout(function(){s.remove()},600)};var min=matchMedia('(prefers-reduced-motion: reduce)').matches?500:1900;document.addEventListener('DOMContentLoaded',function(){setTimeout(done,Math.max(0,min-(Date.now()-t0)))});s.addEventListener('click',done);setTimeout(done,4500)})()</script>
 <div class="demo" id="demo">Demonstration mode — checkout and live Scryfall pricing aren't connected yet. Basket requests are sent to the shop to confirm by hand.</div>
 <header class="top"><div class="wrap hrow">
   <a class="brand" href="#home" aria-label="Mana Hoard home"><picture class="blogo"><source srcset="assets/logo-small.webp" type="image/webp"><img src="assets/logo-small.png" alt="" width="160" height="148"></picture><span><span class="bname">mana hoard</span><span class="btag">Every card has a legend</span></span></a>

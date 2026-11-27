@@ -53,9 +53,13 @@ async function loadStock(env) {
 function shippingOptions(env, subtotal) {
   let rates = [];
   try { rates = JSON.parse(env.SHIPPING || '[]'); } catch { rates = []; }
-  if (!rates.length) rates = [{ name: 'Royal Mail 2nd Class', amount: 150, min: 2, max: 4 }, { name: 'Royal Mail Tracked 48', amount: 395, min: 2, max: 3 }];
+  if (!rates.length) rates = [{ name: 'Royal Mail 2nd Class', amount: 195, min: 2, max: 4 }, { name: 'Royal Mail Tracked 48', amount: 395, min: 2, max: 3 }];
   const free = parseInt(env.FREE_SHIP_OVER || '0', 10);
-  if (free > 0 && subtotal >= free) rates = [{ name: 'Free Tracked 48', amount: 0, min: 2, max: 3 }, ...rates.filter(r => r.amount > 0)];
+  // free postage upgrades the cheapest option (2nd Class) to free; tracked stays a paid upgrade
+  if (free > 0 && subtotal >= free && rates.length) {
+    const cheapest = [...rates].sort((a, b) => a.amount - b.amount)[0];
+    rates = [{ ...cheapest, name: 'Free ' + cheapest.name, amount: 0 }, ...rates.filter(r => r !== cheapest)];
+  }
   return rates.slice(0, 5).map(r => ({
     shipping_rate_data: {
       type: 'fixed_amount', display_name: String(r.name).slice(0, 100),
@@ -93,6 +97,9 @@ async function createCheckout(req, env) {
     });
   }
   if (problems.length) return { status: 409, data: { error: 'Some cards in your basket have changed.', problems } };
+  const minOrder = parseInt(env.MIN_ORDER || '0', 10);
+  const goods = lines.reduce((s, l) => s + l.price_data.unit_amount * l.quantity, 0);
+  if (minOrder > 0 && goods < minOrder) return { status: 400, data: { error: `Our minimum order is £${(minOrder / 100).toFixed(2)}.` } };
   const subtotal = lines.reduce((s, l) => s + l.price_data.unit_amount * l.quantity, 0);
   const ref = String(body.ref || '').replace(/[^A-Z0-9-]/gi, '').slice(0, 40);
   const countries = String(env.SHIP_COUNTRIES || 'GB').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
