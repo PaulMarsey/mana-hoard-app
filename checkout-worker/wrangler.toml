@@ -19,7 +19,7 @@ GITHUB_BRANCH = "main"
 SHIP_COUNTRIES = "GB"
 # Postage options shown at checkout: amount in pence, delivery estimate in working days
 SHIPPING = '[{"name":"Royal Mail 2nd Class","amount":150,"min":2,"max":4},{"name":"Royal Mail Tracked 48","amount":395,"min":2,"max":3}]'
-# Free tracked postage over this basket total in pence (0 = off), e.g. 3000 for £30
-FREE_SHIP_OVER = "0"
+# Free tracked postage over this basket total in pence (0 = off). Keep in step with freePostageOver in app.js
+FREE_SHIP_OVER = "3000"
 # Extra sites allowed to start a checkout (comma separated), e.g. your custom domain later
 EXTRA_ORIGINS = ""

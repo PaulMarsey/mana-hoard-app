@@ -135,6 +135,22 @@ TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTr
 - a **Cardmarket stock sheet** (Cardmarket condition codes, language, foil flag, quantity, price in GBP), and
 - a **Shopify products CSV** (one product per card, condition and finish as the variant) for when you move checkout to Shopify.
 
+## Shop settings you'll want to check
+
+All in the `CONFIG` block at the top of `app.js`:
+
+- **`freePostageOver`**: free postage threshold in pence (3000 = £30). Keep it the same as `FREE_SHIP_OVER` in `checkout-worker/wrangler.toml`.
+- **`postage`**: the delivery options shown on the Policies page. Keep in step with `SHIPPING` in `wrangler.toml`.
+- **`dispatchPromise`** and **`packingPromise`**: the promise lines on the home page, card window and basket.
+- **`reviews`**: paste your Trustpilot and/or Google reviews links. The review buttons (and a "leave a review" note on the thank-you page) only appear once these are filled in.
+- **`business`**: your trading name, address and VAT number for the Policies page. The policies are drafts for UK online selling: read them through before taking real orders.
+
+**Sale prices:** in Shop admin → Listings, fill in **Was £** on a card. It shows crossed out with a Sale badge, and appears in the "Hoard sale" jar. "Deal of the week" is a hand-picked jar: change which cards are in it under Collections.
+
+**Discount codes:** once Stripe checkout is live, create coupons and promotion codes in Stripe (Product catalogue → Coupons). Shoppers enter them on the Stripe payment page.
+
+**Deck Builder:** shoppers paste a list from Moxfield, Archidekt or ManaBox at `#deck`. It matches cards in stock, adds them to the basket in one click, and lists what's missing.
+
 ## How orders work right now
 
 With `checkoutUrl` set, shoppers pay through Stripe (see **Card payments** above). Without it, there's no payment step. The basket's **Email this order** button opens the customer's email app with their order and reference filled in, addressed to `shopEmail`. You confirm stock and postage, send an invoice from **Invoices** (with a PayPal or bank-transfer note), mark the cards sold, and publish.

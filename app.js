@@ -5,7 +5,16 @@ const CONFIG={
   stockFile:'data/stock.json',            // the published stock the shop reads
   checkoutUrl:'',                         // your checkout worker's address (see README: Card payments). Empty = email orders only
   demoBanner:null,                        // null = automatic message, '' = hide, or your own text
-  cardImages:true                         // show Scryfall card images (false = drawn card frames only)
+  cardImages:true,                        // show Scryfall card images (false = drawn card frames only)
+  // postage shown to shoppers: keep in step with SHIPPING / FREE_SHIP_OVER in checkout-worker/wrangler.toml
+  freePostageOver:3000,                   // pence: free postage on baskets of £30+ (0 = off)
+  postage:[{name:'Royal Mail 2nd Class',price:150,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'}],
+  dispatchPromise:'Order by 2pm Mon–Fri, posted the same day',
+  packingPromise:['Every single sleeved and toploadered','Condition checked by hand','Posted from the UK by Royal Mail','Same-day dispatch before 2pm'],
+  // reviews: add your links when you have them (shown as buttons; nothing is invented)
+  reviews:{trustpilotUrl:'',googleReviewsUrl:''},
+  // who you are: shown on the Policies page (UK online sellers must show a name and postal address)
+  business:{name:'Mana Hoard',owner:'',address:'',vatNumber:''}
 };
 /* ============================================================== */
 const IN_APP=/ManaHoardApp\//.test(navigator.userAgent)&&!!window.ManaHoardApp; // running inside the Android app
@@ -29,7 +38,9 @@ const DEFAULTS={markup:30,foil:1.5,min:10,floor:{common:10,uncommon:20,rare:50,m
   {id:'foil-treasures',name:'Foil treasures',hue:300,finish:'Foil'},
   {id:'mythic-vault',name:'Mythic vault',hue:18,rarity:'mythic'},
   {id:'marvel',name:'Marvel Super Heroes',hue:200,set:'MSH'},
-  {id:'sealed',name:'Sealed treasures',hue:265,cats:['Sealed']}]};
+  {id:'sealed',name:'Sealed treasures',hue:265,cats:['Sealed']},
+  {id:'deal-of-the-week',name:'Deal of the week',hue:350,ids:['msh-4']},
+  {id:'hoard-sale',name:'Hoard sale',hue:5,sale:true}]};
 const DEMO=[{"id":"d1","name":"Captain America, Super-Soldier","set":"MSH","setName":"Marvel Super Heroes","num":"387","finish":"Foil","rarity":"mythic","cond":"NM","lang":"en","qty":1,"price":4675,"cost":3900,"cat":"Singles","live":true,"added":8},
  {"id":"d2","name":"The Mind Stone","set":"MSH","setName":"Marvel Super Heroes","num":"21","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":2,"price":3995,"cost":3100,"cat":"Commander","live":true,"added":7},
  {"id":"d3","name":"Mjölnir, Hammer of Thor","set":"MSH","setName":"Marvel Super Heroes","num":"146","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":3,"price":1595,"cost":1250,"cat":"Commander","live":true,"added":6},
@@ -51,7 +62,7 @@ Death to Our Enemies,MSH,Marvel Super Heroes,,normal,,2,208,,0.25,false,false,ne
 let S={items:[],settings:structuredClone(DEFAULTS),dirty:false,loaded:false,canManage:true};
 let PUB={items:[],settings:structuredClone(DEFAULTS),updated:null,ok:false};
 let basket=store.get('mh-basket',[]);
-const SHOP0={col:'',q:'',cat:'All',stock:false,sort:'newest',finish:'All',cond:'All',set:'All',lang:'All',rarity:'All',max:0,shown:48};
+const SHOP0={sale:false,col:'',q:'',cat:'All',stock:false,sort:'newest',finish:'All',cond:'All',set:'All',lang:'All',rarity:'All',max:0,shown:48};
 let shop={...SHOP0};
 let mgr={pt:null,tab:'import',preview:null,q:'',filter:'all',shown:100};
 
@@ -74,23 +85,118 @@ const sfImg=u=>typeof u==='string'&&/^https:\/\/[a-z0-9.-]+\.scryfall\.io\//i.te
 function pcard(l){
   const st=l.qty<=0?['out','Sold out']:l.qty<=2?['low',`Only ${l.qty} left`]:['in','In stock'];
   const sealed=l.cat==='Sealed'||l.cat==='Accessories';
-  return `<button class="pcard${l.qty<=0?' soldout':''}" data-open="${esc(l.id)}" aria-label="${esc(l.name)}, ${esc(l.set)}, ${gbp(l.price)}">
+  return `<button class="pcard${l.qty<=0?' soldout':''}${onSale(l)?' onsale':''}" data-open="${esc(l.id)}" aria-label="${esc(l.name)}, ${esc(l.set)}, ${gbp(l.price)}">
   <div class="pimg">${art(l)}</div>
   <div class="pbody"><h3>${esc(l.name)}</h3>
   <div class="badges"><span class="setcode">${esc(l.set||'—')}</span>${sealed?`<span class="badge">${esc(l.cat)}</span>`:`<span class="cond c-${condTone(l.cond)}" title="${esc(CONDS[l.cond]||l.cond)}">${esc(l.cond)}</span><span class="badge">${esc((l.lang||'en').toUpperCase())}</span>`}${isFoil(l.finish)?`<span class="badge foil">${esc(l.finish)}</span>`:''}</div>
-  <div class="prow"><span class="price">${gbp(l.price)}</span><span class="stock ${st[0]}">${st[1]}</span></div></div></button>`}
+  <div class="prow"><span class="pricewrap">${onSale(l)?`<s class="was">${gbp(l.was)}</s>`:''}<span class="price">${gbp(l.price)}</span></span><span class="stock ${st[0]}">${st[1]}</span></div></div>${onSale(l)?`<span class="salebadge">Sale −${Math.round((1-l.price/l.was)*100)}%</span>`:''}</button>`}
+const onSale=l=>(+l.was||0)>(+l.price||0)&&l.price>0;
+
+/* ---------- promise, postage, reviews ---------- */
+const PROMISE_ICONS=['<path d="M7 3h10v18H7z"/><path d="M9 6h6"/>','<path d="M20 6 9 17l-5-5"/>','<path d="M3 7h13v10H3z"/><path d="M16 10h4l1 3v4h-5"/><circle cx="7" cy="18" r="1.6"/><circle cx="18" cy="18" r="1.6"/>','<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'];
+function promiseItems(){return (CONFIG.packingPromise||[]).map((t,i)=>`<li><svg viewBox="0 0 24 24" aria-hidden="true">${PROMISE_ICONS[i%PROMISE_ICONS.length]}</svg><span>${esc(t)}</span></li>`).join('')}
+function postageBar(sub){
+  const f=+CONFIG.freePostageOver||0;if(!f)return '';
+  const pct=Math.min(100,Math.round(sub/f*100));
+  return `<div class="shipbar${sub>=f?' done':''}"><div class="shiptext">${sub>=f?'<b>You’ve unlocked free postage!</b>':`<b>${gbp(f-sub)}</b> away from free postage`}</div><div class="shiptrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div></div>`}
+function reviewsBand(){
+  const r=CONFIG.reviews||{};if(!r.trustpilotUrl&&!r.googleReviewsUrl)return '';
+  return `<section class="band wrap reviews"><div class="box" style="text-align:center;display:grid;gap:10px;justify-items:center"><h2>What adventurers say</h2><p class="muted" style="margin:0">Read honest reviews from people who’ve shopped the hoard, or leave your own.</p><div class="row" style="justify-content:center">${r.trustpilotUrl?`<a class="btn gold" href="${esc(r.trustpilotUrl)}" target="_blank" rel="noopener">Reviews on Trustpilot</a>`:''}${r.googleReviewsUrl?`<a class="btn ghost" href="${esc(r.googleReviewsUrl)}" target="_blank" rel="noopener">Reviews on Google</a>`:''}</div></div></section>`}
+
+/* ---------- deck builder: paste a decklist ---------- */
+const BASICS=new Set(['plains','island','swamp','mountain','forest','wastes','snowcoveredplains','snowcoveredisland','snowcoveredswamp','snowcoveredmountain','snowcoveredforest']);
+const deckNorm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+function parseDeck(text){
+  const want=new Map();let skipped=0;
+  for(let raw of String(text||'').split(/\r?\n/)){
+    let line=raw.trim();if(!line)continue;
+    if(/^(\/\/|#)/.test(line)||/^(commander|companion|deck|main(board)?|side(board)?|maybe(board)?|considering|tokens?|lands?|creatures?|instants?|sorcer(y|ies)|artifacts?|enchantments?|planeswalkers?|battles?)\b\s*:?\s*(\(\d+\))?$/i.test(line))continue;
+    line=line.replace(/^SB:\s*/i,'');
+    const m=line.match(/^(\d+)\s*x?\s+(.+)$/i);let qty=1,rest=line;
+    if(m){qty=Math.min(99,parseInt(m[1],10)||1);rest=m[2]}
+    let set='',num='';const foil=/\*(F|E)\*|\(foil\)|\bfoil\b/i.test(rest);
+    rest=rest.replace(/\s*\[[^\]]*\]/g,'').replace(/\s*\^[^^]*\^/g,'').replace(/\s*\*[A-Z]\*\s*/gi,' ').replace(/\s*\(foil\)/i,'');
+    const sm=rest.match(/^(.*?)\s+\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★\-]+)?\s*$/);
+    if(sm){rest=sm[1];set=sm[2].toUpperCase();num=sm[3]||''}
+    const name=rest.split(' // ')[0].replace(/\s+/g,' ').trim();if(!name){skipped++;continue}
+    const k=deckNorm(name);const ex=want.get(k);
+    if(ex)ex.qty+=qty;else want.set(k,{name,qty,set,num,foil})}
+  return {lines:[...want.values()],skipped}}
+const deckState={text:store.get('mh-deck',''),pref:'cheap',basics:true,result:null};
+function matchDeck(){
+  const {list}=catalogue(),pool=list.filter(p=>p.qty>0);const used=new Map(basket.map(b=>[b.id,b.qty]));
+  const parsed=parseDeck(deckState.text);const rows=[];
+  for(const w of parsed.lines){
+    const k=deckNorm(w.name);
+    if(deckState.basics&&BASICS.has(k)){rows.push({w,picks:[],got:0,skippedBasic:true});continue}
+    let cands=pool.filter(p=>deckNorm(String(p.name).split(' // ')[0])===k||deckNorm(p.name)===k);
+    const sc=p=>(w.set&&p.set===w.set?0:1)*1e7+(deckState.pref==='foil'?(isFoil(p.finish)?0:1)*1e6:0)+(deckState.pref==='best'?Object.keys(CONDS).indexOf(p.cond)*1e5:0)+p.price;
+    cands.sort((a,b)=>sc(a)-sc(b));
+    let need=w.qty;const picks=[];
+    for(const p of cands){if(need<=0)break;const avail=p.qty-(used.get(p.id)||0);if(avail<=0)continue;const take=Math.min(avail,need);picks.push({p,take});need-=take;used.set(p.id,(used.get(p.id)||0)+take)}
+    rows.push({w,picks,got:w.qty-need,alts:cands.length})}
+  deckState.result={rows,skipped:parsed.skipped}}
+function pDeck(){
+  const R=deckState.result;
+  const found=R?R.rows.filter(r=>r.got>0):[],missing=R?R.rows.filter(r=>!r.skippedBasic&&r.got<r.w.qty):[];
+  const total=found.reduce((s,r)=>s+r.picks.reduce((a,x)=>a+x.p.price*x.take,0),0),cards=found.reduce((s,r)=>s+r.got,0),wanted=R?R.rows.filter(r=>!r.skippedBasic).reduce((s,r)=>s+r.w.qty,0):0;
+  return `<section class="wrap shophead"><h1>Deck Builder</h1><p class="muted">Paste a decklist from Moxfield, Archidekt, ManaBox or anywhere else. We'll find everything that's in the hoard, add it to your basket in one go, and list what's missing.</p></section>
+  <section class="wrap deckgrid">
+   <div class="box" style="display:grid;gap:12px;align-content:start">
+    <label class="l" for="decktext">Your decklist</label>
+    <textarea id="decktext" rows="14" placeholder="1 Sol Ring (CMR) 472&#10;1x Arcane Signet&#10;1 Cultivate&#10;4 Lightning Bolt" spellcheck="false">${esc(deckState.text)}</textarea>
+    <div class="colgrid" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div><label class="l" for="deckpref">When there's a choice</label><select id="deckpref">${[['cheap','Cheapest copy'],['best','Best condition'],['foil','Prefer foil']].map(([v,t])=>`<option value="${v}"${deckState.pref===v?' selected':''}>${t}</option>`).join('')}</select></div>
+     <label class="check" style="align-self:end"><input type="checkbox" id="deckbasics"${deckState.basics?' checked':''}> Skip basic lands</label></div>
+    <div class="row"><button class="btn gold" id="deckFind">Find my cards</button><button class="linkbtn" id="deckClear">Clear</button></div>
+    <p class="muted small" style="margin:0">Works with “1 Card Name”, “1x Card Name”, set codes like “(CMR) 472”, Archidekt tags and section headings.</p>
+   </div>
+   <div>${R?`<div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:14px"><div class="stat"><b>${cards}/${wanted}</b><span>cards in the hoard</span></div><div class="stat"><b>${gbp(total)}</b><span>for what we have</span></div><div class="stat"><b>${missing.length}</b><span>still to find</span></div></div>
+    ${found.length?`<div class="tbl"><table class="decktable"><thead><tr><th>Card</th><th>Copy</th><th class="n">Qty</th><th class="n">Price</th></tr></thead><tbody>${found.map(r=>r.picks.map((x,j)=>`<tr><td>${j?'':`<b>${esc(r.w.name)}</b>${r.got<r.w.qty?` <span class="pill low">${r.got} of ${r.w.qty}</span>`:''}`}</td><td><button class="linkbtn" data-open="${esc(x.p.id)}">${esc(x.p.set)}${x.p.num?' #'+esc(x.p.num):''}</button> <span class="cond c-${condTone(x.p.cond)}">${esc(x.p.cond)}</span>${isFoil(x.p.finish)?' <span class="badge foil">Foil</span>':''}</td><td class="n">${x.take}</td><td class="n">${gbp(x.p.price*x.take)}</td></tr>`).join('')).join('')}</tbody></table></div>
+     <div class="row" style="margin:14px 0"><button class="btn gold" id="deckAdd">Add ${cards} card${cards===1?'':'s'} to basket · ${gbp(total)}</button></div>`:'<div class="empty"><h3>None of these are in the hoard yet</h3><p>Send us the list and we’ll keep an eye out.</p></div>'}
+    ${missing.length?`<details class="box missing"${found.length?'':' open'}><summary><b>Not in the hoard (${missing.length})</b></summary><ul>${missing.map(r=>`<li>${r.w.qty-r.got} × ${esc(r.w.name)}${r.got?` <span class="muted small">(we have ${r.got})</span>`:''}</li>`).join('')}</ul>
+     <div class="row"><button class="btn ghost sm" id="deckCopyMissing">Copy missing list</button><a class="btn ghost sm" href="mailto:${esc(CONFIG.shopEmail)}?subject=${encodeURIComponent('Can the Hoard find these?')}&body=${encodeURIComponent('Hello Mana Hoard,\n\nCould you look out for these cards for me?\n\n'+missing.map(r=>`${r.w.qty-r.got} ${r.w.name}`).join('\n')+'\n\nThanks!')}">Ask the Hoard to find them</a></div></details>`:''}
+    ${R.rows.some(r=>r.skippedBasic)?`<p class="muted small">Basic lands skipped (${R.rows.filter(r=>r.skippedBasic).map(r=>esc(r.w.name)).join(', ')}).</p>`:''}`
+   :`<div class="empty"><h3>Your list, matched to the hoard</h3><p>Paste a decklist and press <b>Find my cards</b>.</p></div>`}</div>
+  </section>`}
+
+/* ---------- policies ---------- */
+function pPolicies(){
+  const B=CONFIG.business||{},P=CONFIG.postage||[],free=+CONFIG.freePostageOver||0,em=esc(CONFIG.shopEmail);
+  return `<section class="wrap shophead"><h1>Policies</h1><p class="muted">Delivery, returns, payments and privacy, in plain English.</p>${B.address?'':'<p class="note" style="margin-top:12px">Draft policies for the test phase: the shop owner still needs to add a business address and check these details before taking real orders.</p>'}</section>
+  <section class="wrap policies">
+   <article class="box" id="delivery"><h2>Delivery</h2>
+    <ul>${P.map(o=>`<li><b>${esc(o.name)}</b>: ${gbp(o.price)} (${esc(o.days)})</li>`).join('')}${free?`<li><b>Free postage</b> on orders of ${gbp(free)} or more.</li>`:''}</ul>
+    <p>${CONFIG.dispatchPromise?`${esc(CONFIG.dispatchPromise)}. Orders placed later, at weekends or on bank holidays go out the next working day.`:'We aim to post every order within 1–2 working days.'} You choose your postage at checkout.</p>
+    <p>Every single is posted in a penny sleeve and toploader inside a rigid mailer; sealed product is packed so it arrives in the condition it left. We post to UK addresses only for now.</p>
+    <p>If your order hasn’t arrived within 10 working days of dispatch, email us at ${em}. We’ll trace it with Royal Mail and send a replacement or a full refund.</p></article>
+   <article class="box" id="returns"><h2>Returns and refunds</h2>
+    <p><b>Changed your mind?</b> You can cancel within 14 days of receiving your order: just email ${em}. Send the items back within 14 days of telling us, in the condition you received them, and we’ll refund the item price and the standard postage you paid within 14 days of getting them back. Return postage is yours to pay unless we made a mistake. Sealed product should come back unopened; if it has been opened, we may reduce the refund to reflect the drop in value.</p>
+    <p><b>Something not right?</b> If a card isn’t the printing, language or condition we described, or arrives damaged, tell us within 30 days. We’ll refund you in full, including postage both ways, or replace it if we can. This doesn’t affect your legal rights.</p>
+    <p>Conditions follow the grades in our condition guide (shown on every card). If you think a card was graded wrongly, send a photo and we’ll sort it out.</p></article>
+   <article class="box" id="payments"><h2>Payments and prices</h2>
+    <p>Prices are in pounds sterling and include everything except postage, which is shown before you pay. ${CONFIG.checkoutUrl?'Payments are handled securely by Stripe: pay by card, Apple Pay or Google Pay. We never see or store your card details.':'Orders are confirmed by email, and we send an invoice with payment details.'}${B.vatNumber?` VAT number: ${esc(B.vatNumber)}.`:''}</p>
+    <p>Discount codes are entered on the payment page; one code per order unless stated. If a card sells out between you ordering and us packing, we’ll refund it straight away.</p></article>
+   <article class="box" id="privacy"><h2>Privacy</h2>
+    <p>${esc(B.name||'Mana Hoard')} looks after the details you give us when you order: your name, email, delivery address and what you bought. We use them only to process, post and support your order, and keep order records for six years for tax purposes.</p>
+    <p>We share them only with the services that make your order happen: Stripe (payments) and Royal Mail (delivery). We never sell your data or send marketing you haven’t asked for.</p>
+    <p>This website sets no advertising or tracking cookies. Your basket and any notes are saved in your own browser so they’re there when you come back. Card images and card data come from Scryfall, and the site is hosted by GitHub Pages.</p>
+    <p>You can ask to see, correct or delete the information we hold about you by emailing ${em}. If you’re unhappy with how we’ve handled your data, you can complain to the Information Commissioner’s Office (ico.org.uk).</p></article>
+   <article class="box" id="about-us"><h2>Who we are</h2>
+    <p><b>${esc(B.name||'Mana Hoard')}</b>${B.owner?`, run by ${esc(B.owner)}`:''}${B.address?`<br>${esc(B.address).replace(/\n/g,'<br>')}`:''}<br>Email: ${em}</p>
+    <p class="muted small">Magic: The Gathering and its card names and images are property of Wizards of the Coast. Mana Hoard is an independent shop, not affiliated with or endorsed by Wizards of the Coast or Scryfall.</p></article>
+  </section>`}
 
 /* ---------- pages ---------- */
-const NAV=[['shop','The Hoard'],['commander','Commander'],['tales','Tales from the Hoard'],['about','About'],['contact','Contact']];
+const NAV=[['shop','The Hoard'],['deck','Deck Builder'],['commander','Commander'],['tales','Tales from the Hoard'],['about','About'],['contact','Contact']];
 function renderNav(r){$('#nav').innerHTML=NAV.map(([k,t])=>`<a href="#${k}"${r===k?' aria-current="page"':''}>${t}</a>`).join('');
   document.querySelectorAll('#tabbar a').forEach(a=>{if(a.getAttribute('href')==='#'+r)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}
 
 /* ---------- collections (the jars) ---------- */
-const colNorm=c=>({id:'c'+Math.random().toString(36).slice(2,8),name:'New collection',hue:42,cats:[],finish:'All',rarity:'All',set:'All',min:0,max:0,q:'',ids:[],...(c||{})});
-const colHasRule=c=>c.cats.length||c.finish!=='All'||c.rarity!=='All'||c.set!=='All'||c.min||c.max||c.q;
+const colNorm=c=>({id:'c'+Math.random().toString(36).slice(2,8),name:'New collection',hue:42,cats:[],finish:'All',rarity:'All',set:'All',min:0,max:0,q:'',ids:[],sale:false,...(c||{})});
+const colHasRule=c=>c.cats.length||c.finish!=='All'||c.rarity!=='All'||c.set!=='All'||c.min||c.max||c.q||c.sale;
 function colMatch(c,p){
   if(c.ids.includes(p.id))return true;if(!colHasRule(c))return false;
-  return (!c.cats.length||c.cats.includes(p.cat))&&(c.finish==='All'||(c.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(c.rarity==='All'||rk(p.rarity)===c.rarity)&&(c.set==='All'||p.set===c.set)&&(!c.min||p.price>=c.min)&&(!c.max||p.price<=c.max)&&(!c.q||String(p.name).toLowerCase().includes(String(c.q).toLowerCase()))}
+  return (!c.cats.length||c.cats.includes(p.cat))&&(c.finish==='All'||(c.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(c.rarity==='All'||rk(p.rarity)===c.rarity)&&(c.set==='All'||p.set===c.set)&&(!c.min||p.price>=c.min)&&(!c.max||p.price<=c.max)&&(!c.q||String(p.name).toLowerCase().includes(String(c.q).toLowerCase()))&&(!c.sale||onSale(p))}
 const pubCols=()=>((PUB.ok&&Array.isArray(PUB.settings.collections))?PUB.settings.collections:DEFAULTS.collections).map(colNorm);
 const JARS=list=>pubCols().map(c=>[c,list.filter(p=>colMatch(c,p)).length]).filter(x=>x[1]>0).slice(0,8);
 function pHome(){
@@ -105,8 +211,9 @@ function pHome(){
    <p class="tagline">Every card has a <em>legend</em>.</p>
    <p class="lead">Curl up in the hoard. Singles, Commander staples and sealed Magic: The Gathering, gathered and cared for by an independent UK shop run by a player.</p>
    <form class="hsearch" id="hsearch" role="search"><input type="search" id="hq" placeholder="What are you hunting for?" aria-label="Search cards" autocomplete="off"><button class="btn gold" type="submit">Search</button></form>
-   <div class="trust"><span>Every card checked by hand</span><span>Priced in pounds</span><span>Packed with care</span></div></div>
+   <div class="trust"><span>${esc(CONFIG.dispatchPromise||'Packed with care')}</span>${CONFIG.freePostageOver?`<span>Free postage over ${gbp(CONFIG.freePostageOver).replace('.00','')}</span>`:''}<span>Priced in pounds</span></div></div>
    <div class="scene">${HoardArt.burrowBack()}<div class="scards">${heroCards.map(c=>`<button class="scard" data-open="${esc(c.id)}" aria-label="${esc(c.name)}">${art(c)}</button>`).join('')}</div>${HoardArt.burrowFront()}${motes}</div></div></section>
+  <section class="promisebar"><ul class="promise wrap">${promiseItems()}</ul></section>
   ${jars.length?`<section class="band wrap"><div class="head"><h2>Browse the shelves</h2><a href="#shop">Everything →</a></div>
    <div class="shelf">${jars.map(([c,n])=>`<button class="jarbtn" data-jar="${esc(c.id)}" aria-label="${esc(c.name)}: ${n} item${n===1?'':'s'}">${HoardArt.jar(c.name,c.hue,.35+((n%7)/12),`${n} in the hoard`)}</button>`).join('')}</div></section>`:''}
   <section class="surface"><div class="band wrap"><div class="head"><h2>Treasures of the hoard</h2><a href="#shop">See all →</a></div>
@@ -115,15 +222,16 @@ function pHome(){
   <section class="band wrap"><div class="head"><h2>Fresh from the burrow</h2><a href="#shop">Browse more →</a></div>
    <div class="grid rail">${recent.map(pcard).join('')}</div></section>
   <section class="surface"><div class="band wrap lore"><div><h2>Made by players. Here for the community.</h2><p class="muted">Mana Hoard is an independent UK card shop where fantasy, strategy and collecting meet. We specialise in Magic: The Gathering, with a soft spot for Commander, and every card is checked and packed by hand before it leaves the burrow.</p><a class="btn ghost" href="#about">Our story</a></div>
-   <div class="tri"><div class="box"><h3>Commander</h3><p>Lovingly curated staples</p></div><div class="box"><h3>Community</h3><p>Real-player support</p></div><div class="box"><h3>Care</h3><p>Every order packed by hand</p></div></div></div></section>`}
+   <div class="tri"><div class="box"><h3>Commander</h3><p>Lovingly curated staples</p></div><div class="box"><h3>Community</h3><p>Real-player support</p></div><div class="box"><h3>Care</h3><p>Every order packed by hand</p></div></div></div></section>
+  ${reviewsBand()}`}
 
 function shopFiltered(list){
   const q=shop.q.trim().toLowerCase();
   const col=shop.col&&pubCols().find(c=>c.id===shop.col);
-  const out=list.filter(p=>(!col||colMatch(col,p))&&(shop.cat==='All'||p.cat===shop.cat)&&(shop.lang==='All'||(p.lang||'en')===shop.lang)&&(shop.rarity==='All'||rk(p.rarity)===shop.rarity)&&(!shop.max||p.price<=shop.max)&&(!shop.stock||p.qty>0)&&(shop.finish==='All'||(shop.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(shop.cond==='All'||p.cond===shop.cond)&&(shop.set==='All'||p.set===shop.set)&&(!q||`${p.name} ${p.set} ${p.setName} ${p.rarity} ${p.finish}`.toLowerCase().includes(q)));
+  const out=list.filter(p=>(!col||colMatch(col,p))&&(shop.cat==='All'||p.cat===shop.cat)&&(shop.lang==='All'||(p.lang||'en')===shop.lang)&&(shop.rarity==='All'||rk(p.rarity)===shop.rarity)&&(!shop.max||p.price<=shop.max)&&(!shop.sale||onSale(p))&&(!shop.stock||p.qty>0)&&(shop.finish==='All'||(shop.finish==='Foil'?isFoil(p.finish):!isFoil(p.finish)))&&(shop.cond==='All'||p.cond===shop.cond)&&(shop.set==='All'||p.set===shop.set)&&(!q||`${p.name} ${p.set} ${p.setName} ${p.rarity} ${p.finish}`.toLowerCase().includes(q)));
   const f={'price-low':(a,b)=>a.price-b.price,'price-high':(a,b)=>b.price-a.price,alpha:(a,b)=>a.name.localeCompare(b.name),newest:(a,b)=>(b.added||0)-(a.added||0)}[shop.sort];
   return out.sort(f)}
-const activeFilters=()=>(shop.finish!=='All')+(shop.cond!=='All')+(shop.set!=='All')+(shop.lang!=='All')+(shop.rarity!=='All')+(shop.max?1:0)+(shop.stock?1:0);
+const activeFilters=()=>(shop.sale?1:0)+(shop.finish!=='All')+(shop.cond!=='All')+(shop.set!=='All')+(shop.lang!=='All')+(shop.rarity!=='All')+(shop.max?1:0)+(shop.stock?1:0);
 function pShop(){
   const {list}=catalogue();const sets=[...new Set(list.map(p=>p.set))].sort();const langs=[...new Set(list.map(p=>p.lang||'en'))].sort();
   return `<section class="wrap shophead"><h1>The Hoard</h1><p class="muted">Singles, Commander staples, sealed product and accessories, condition-checked and priced in pounds.</p></section>
@@ -142,6 +250,7 @@ function pShop(){
    <div><label class="l" for="fset">Set</label><select id="fset"><option value="All">All sets</option>${sets.map(s=>`<option${shop.set===s?' selected':''}>${esc(s)}</option>`).join('')}</select></div>
    <div><label class="l" for="flang">Language</label><select id="flang"><option value="All">Any language</option>${langs.map(v=>`<option value="${esc(v)}"${shop.lang===v?' selected':''}>${esc(LANGS[v]||v.toUpperCase())}</option>`).join('')}</select></div>
    <label class="check"><input type="checkbox" id="fstock"${shop.stock?' checked':''}> In stock only</label>
+   <label class="check"><input type="checkbox" id="fsale"${shop.sale?' checked':''}> On sale</label>
    <button class="linkbtn" id="freset2" style="justify-self:start">Clear all filters</button>
    <button class="btn gold sheetonly" id="applyFilters">Show results</button>
   </aside><div id="results"></div></div>`}
@@ -179,8 +288,6 @@ const pContact=()=>`<section class="band wrap" style="max-width:720px"><h1>Ask t
    <div><label class="l" for="cmsg">Message</label><textarea id="cmsg" rows="6"></textarea></div>
    <div class="row"><button class="btn" type="submit">Copy message</button><a class="btn ghost" href="mailto:${esc(CONFIG.shopEmail)}">Open email app</a></div>
    <p id="cstatus" class="muted small"></p></form></section>`;
-const pPolicies=()=>`<section class="band wrap"><h1>Policies</h1><p class="muted">Delivery, returns and privacy wording is pending business review before launch.</p></section>
-  <section class="wrap"><div class="tri"><div class="box"><span>Delivery</span><h3>Shipping</h3><p>Delivery options and charges to be confirmed before publication.</p></div><div class="box"><span>Returns</span><h3>Refunds</h3><p>Return policy and handling details must be confirmed before launch.</p></div><div class="box"><span>Privacy</span><h3>Data handling</h3><p>Privacy, cookie and terms content pending legal review.</p></div></div></section>`;
 
 /* ---------- manager ---------- */
 function pManager(){
@@ -218,11 +325,12 @@ function mListings(){
    <div class="chips">${[['all','All'],['live','Live'],['draft','Drafts'],['out','Sold out']].map(([k,t])=>`<button class="chip" data-mf="${k}" aria-pressed="${mgr.filter===k}">${t}</button>`).join('')}</div></div>
    <div class="row"><button class="btn sm ghost" id="repriceDrafts"${drafts?'':' disabled'}>Re-price drafts by rules</button><button class="btn sm" id="publishAll"${drafts?'':' disabled'}>Publish ${drafts} draft${drafts===1?'':'s'}</button></div></div>
   ${imgBar()}
-  <div class="tbl"><table><thead><tr><th>Card</th><th>Finish</th><th>Cond.</th><th class="n">Qty</th><th class="n">Price £</th><th>Category</th><th>Live</th><th></th></tr></thead><tbody>
+  <div class="tbl"><table><thead><tr><th>Card</th><th>Finish</th><th>Cond.</th><th class="n">Qty</th><th class="n">Price £</th><th class="n" title="Optional: the old price, shown crossed out">Was £</th><th>Category</th><th>Live</th><th></th></tr></thead><tbody>
   ${r.slice(0,mgr.shown).map(i=>`<tr data-id="${esc(i.id)}"><td><div class="row" style="flex-wrap:nowrap;gap:10px">${sfImg(i.img)?`<img class="thumb" src="${esc(i.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:'<span class="thumb none" aria-hidden="true"></span>'}<span><b>${esc(i.name)}</b><br><span class="muted small">${esc(i.setName||i.set)} ${i.num?'#'+esc(i.num):''} · ${esc(i.lang||'en')}${i.imgMiss?' · <span style="color:var(--warn)">no Scryfall match</span>':''}</span></span></div></td><td>${esc(i.finish)}</td>
    <td><select data-f="cond" aria-label="Condition">${Object.keys(CONDS).map(k=>`<option${i.cond===k?' selected':''}>${k}</option>`).join('')}</select></td>
    <td class="n"><input type="number" min="0" step="1" data-f="qty" value="${i.qty}" aria-label="Quantity"></td>
    <td class="n"><input type="number" min="0" step="0.01" data-f="price" value="${(i.price/100).toFixed(2)}" aria-label="Price in pounds"></td>
+   <td class="n"><input type="number" min="0" step="0.01" data-f="was" value="${i.was?(i.was/100).toFixed(2):''}" placeholder="—" aria-label="Was price in pounds (sale)"></td>
    <td><select data-f="cat" aria-label="Category">${CATS.map(c=>`<option${i.cat===c?' selected':''}>${c}</option>`).join('')}</select></td>
    <td><button class="switch" role="switch" data-f="live" aria-checked="${!!i.live}" aria-label="Live in shop"></button></td>
    <td><button class="linkbtn" data-del="${esc(i.id)}" style="color:var(--warn)">Remove</button></td></tr>`).join('')}
@@ -396,7 +504,7 @@ function renderBasket(){
   const lines=basket.map(b=>({b,l:byId(b.id)}));const sub=lines.reduce((s,{b,l})=>s+l.price*b.qty,0);
   $('#dbody').innerHTML=lines.length?lines.map(({b,l})=>`<div class="line">${art(l)}<div><b>${esc(l.name)}</b><br><span class="muted small">${esc(l.set)} · ${esc(l.cond)} · ${esc(l.finish)} · ${gbp(l.price)}</span></div>
    <div class="qty"><button data-bq="${esc(b.id)}" data-d="-1" aria-label="One fewer">−</button><span>${b.qty}</span><button data-bq="${esc(b.id)}" data-d="1" aria-label="One more"${b.qty>=l.qty?' disabled':''}>+</button></div></div>`).join(''):'<div class="empty" style="margin-top:20px"><h3>Your basket is empty</h3><p>Find something legendary in the Hoard.</p></div>';
-  $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div><p class="muted small" style="margin:0">${CONFIG.checkoutUrl?'Choose postage at checkout. Every card is checked and packed by hand.':'Send your basket by email and the shop will confirm stock, delivery and payment.'}</p>
+  $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div>${postageBar(sub)}<p class="muted small" style="margin:0">${CONFIG.dispatchPromise?`<b>${esc(CONFIG.dispatchPromise)}.</b> `:''}${CONFIG.checkoutUrl?'Choose postage at checkout. Got a discount code? Add it on the payment page.':'Send your basket by email and the shop will confirm stock, delivery and payment.'}</p>
    <div><label class="l" for="bnote">Note (optional)</label><input type="text" id="bnote" placeholder="e.g. combine postage with last order" value="${esc(store.get('mh-note',''))}"></div>
    ${CONFIG.checkoutUrl?`${payButton()}<button class="btn ghost" id="sendReq">Email this order instead</button>`:`<button class="btn gold" id="sendReq">Email this order</button>`}<a class="linkbtn" href="#order" style="text-align:center">View &amp; print order summary</a>
    ${CONFIG.checkoutUrl?'':`<p class="muted small" style="margin:0">Or send it to ${esc(CONFIG.shopEmail)}</p>`}`:''}
@@ -426,6 +534,7 @@ let paidRef=null,paidSession='',paidFromApp=false;
 function pThanks(){
   return `<section class="band wrap sheetwrap"><article class="sheet thanks"><header class="shead">${sheetLogo}<div><h2>${paidRef?'Payment received':'Thank you'}</h2><p>${paidRef?`Order <b>${esc(paidRef)}</b><br>`:''}${today()}</p></div></header>
    <p class="sthanks" style="margin-top:0">Your treasures are safe in the hoard!</p>
+   ${paidRef&&(CONFIG.reviews.trustpilotUrl||CONFIG.reviews.googleReviewsUrl)?`<p class="snote">When your cards arrive, a quick review would mean the world to a small shop: ${[CONFIG.reviews.trustpilotUrl&&`<a href="${esc(CONFIG.reviews.trustpilotUrl)}" target="_blank" rel="noopener">Trustpilot</a>`,CONFIG.reviews.googleReviewsUrl&&`<a href="${esc(CONFIG.reviews.googleReviewsUrl)}" target="_blank" rel="noopener">Google</a>`].filter(Boolean).join(' or ')}.</p>`:''}
    <p class="snote">${paidRef?'Stripe has emailed your receipt. We\u2019ll check every card, pack your order by hand and email you when it\u2019s on its way.':'If you\u2019ve just paid, your receipt is on its way from Stripe by email.'} Questions? Email ${esc(CONFIG.shopEmail)}${paidRef?` quoting ${esc(paidRef)}`:''}.</p>
    <div class="row noprint" style="justify-content:center;margin-top:18px">${paidFromApp&&!IN_APP?`<a class="btn gold" id="backToApp" href="${esc(appReturnUrl())}">Back to the Mana Hoard app</a>`:'<a class="btn gold" href="#shop">Back to the Hoard</a>'}</div></article></section>`}
 const appReturnUrl=()=>`intent://paid?session=${encodeURIComponent(paidSession)}#Intent;scheme=manahoard;package=uk.co.manahoard.app;end`;
@@ -451,6 +560,7 @@ function mCollections(){
      <div><label class="l">Up to £</label><input type="number" min="0" step="0.5" data-cf="max" value="${c.max?(c.max/100).toFixed(2):''}" placeholder="no limit"></div>
      <div><label class="l">Name contains</label><input type="text" data-cf="q" value="${esc(c.q)}" placeholder="e.g. Signet"></div>
     </div>
+    <label class="check"><input type="checkbox" data-cf="sale"${c.sale?' checked':''}> Only cards on sale (with a “was” price)</label>
     <details class="picker"><summary>Hand-picked cards (${c.ids.length})</summary>
      <input type="search" class="pickq" placeholder="Search your listings" aria-label="Search listings to pick">
      <div class="picklist">${[...items].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<label class="pick" data-n="${esc((p.name+' '+p.set).toLowerCase())}"><input type="checkbox" data-cf="ids" value="${esc(p.id)}"${c.ids.includes(p.id)?' checked':''}> ${esc(p.name)} <span class="muted small">${esc(p.set)} · ${esc(p.cond)}${isFoil(p.finish)?' · foil':''} · ${gbp(p.price)}</span></label>`).join('')}</div>
@@ -464,6 +574,7 @@ function colChange(t){
   else if(f==='ids'){c.ids=t.checked?[...new Set([...c.ids,t.value])]:c.ids.filter(x=>x!==t.value)}
   else if(f==='min'||f==='max'){c[f]=Math.max(0,Math.round((parseFloat(t.value)||0)*100))}
   else if(f==='hue'){c.hue=+t.value}
+  else if(f==='sale'){c.sale=t.checked}
   else c[f]=t.value.slice(0,40);
   markDirty();
   if(f==='ids'){const sm=card.querySelector('.picker summary');if(sm)sm.textContent=`Hand-picked cards (${c.ids.length})`;return true}
@@ -543,19 +654,20 @@ function openCard(id){const l=byId(id);if(!l)return;const d=$('#dlg');const inB=
     <div class="badges"><span class="setcode">${esc(l.set||'—')}</span><span class="muted small">${esc(l.setName||'')}${l.num?' · #'+esc(l.num):''}</span></div>
     <h2>${esc(l.name)}</h2>${l.tline?`<p class="muted" style="margin:6px 0 0">${esc(l.tline)}</p>`:''}
     <div class="sumgrid">
-     <div class="sum hi"><span>Hoard price</span><b>${gbp(l.price)}</b><small>${l.qty>0?`${l.qty} in the hoard`:'Sold out'}</small></div>
+     <div class="sum hi"><span>Hoard price${onSale(l)?` <em class="salepill">Sale −${Math.round((1-l.price/l.was)*100)}%</em>`:''}</span><b>${onSale(l)?`<s class="was">${gbp(l.was)}</s> `:''}${gbp(l.price)}</b><small>${l.qty>0?`${l.qty} in the hoard`:'Sold out'}</small></div>
      ${sealed?`<div class="sum"><span>Type</span><b>${esc(l.cat)}</b></div>`:`<div class="sum"><span>Condition</span><b><span class="cond c-${condTone(l.cond)}">${esc(l.cond)}</span> ${esc(CONDS[l.cond]||'')}</b></div>
      <div class="sum"><span>Language</span><b>${esc(LANGS[l.lang||'en']||(l.lang||'').toUpperCase())}</b></div>`}
      <div class="sum"><span>Finish</span><b>${esc(l.finish)}</b></div>
      ${sealed?'':`<div class="sum"><span>Rarity</span><b class="cap"><i class="gem ${rk(l.rarity)}"></i> ${esc(rk(l.rarity))}</b></div>`}
     </div>
     ${sealed?'':`<details class="cguide"><summary>Condition guide</summary><ul>${Object.keys(CONDS).map(k=>`<li${k===l.cond?' class="on"':''}><span class="cond c-${condTone(k)}">${k}</span><span><b>${CONDS[k]}</b> ${CONDDESC[k]}</span></li>`).join('')}</ul></details>`}
+    <ul class="promise mini">${promiseItems()}</ul>
     <div class="buy"><span class="bprice"><b class="price">${gbp(l.price)}</b><small>${l.qty>0?`${l.qty} in the hoard`:'Sold out'}</small></span><button class="btn gold" data-add="${esc(l.id)}"${l.qty<=inB?' disabled':''}>${l.qty<=0?'Sold out':l.qty<=inB?'All in your basket':'Add to basket'}</button>${inB?`<span class="muted">${inB} in basket</span>`:''}</div>
    </div></div></div>`;
   d.showModal()}
 
 /* ---------- router ---------- */
-const ROUTES={thanks:pThanks,order:pOrder,invoice:pInvoice,home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbout,contact:pContact,policies:pPolicies,manager:pManager};
+const ROUTES={deck:pDeck,thanks:pThanks,order:pOrder,invoice:pInvoice,home:pHome,shop:pShop,commander:pCommander,tales:pTales,about:pAbout,contact:pContact,policies:pPolicies,manager:pManager};
 function route(){const r=location.hash.slice(1);return ROUTES[r]?r:'home'}
 function render(scroll){const r=route();renderNav(r);$('#view').innerHTML=ROUTES[r]();if(r==='shop')renderResults();{const d=$('#demo');if(d)d.hidden=r==='manager'||r==='invoice'||r==='order'||r==='thanks'}if(scroll)window.scrollTo(0,0)}
 function rerenderSoft(){const r=route();if(r==='shop')renderResults();else if(r==='manager'){const p=$('#mpanel');if(p&&document.activeElement&&p.contains(document.activeElement)&&document.activeElement.matches('input,select'))return;render(false)}else render(false);renderBasket()}
@@ -582,6 +694,10 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.dataset.bq){const b=basket.find(x=>x.id===t.dataset.bq);if(b){b.qty+=+t.dataset.d;if(b.qty<=0)basket=basket.filter(x=>x!==b);store.set('mh-basket',basket);renderBasket()}return}
   if(t.id==='sendReq'){sendRequest();return}
   if(t.id==='payNow'){startCheckout(t);return}
+  if(t.id==='deckFind'){deckState.text=$('#decktext').value;store.set('mh-deck',deckState.text);if(!deckState.text.trim()){toast('Paste a decklist first');return}matchDeck();render(false);document.querySelector('.deckgrid>div:last-child')?.scrollIntoView({behavior:'smooth',block:'start'});return}
+  if(t.id==='deckClear'){deckState.text='';deckState.result=null;store.set('mh-deck','');render(false);return}
+  if(t.id==='deckAdd'&&deckState.result){let n=0;deckState.result.rows.forEach(r=>r.picks.forEach(x=>{const b=basket.find(y=>y.id===x.p.id);if(b)b.qty=Math.min(x.p.qty,b.qty+x.take);else basket.push({id:x.p.id,qty:x.take});n+=x.take}));store.set('mh-basket',basket);renderBasket();matchDeck();render(false);toast(`${n} card${n===1?'':'s'} added to your basket`);openDrawer(true);return}
+  if(t.id==='deckCopyMissing'&&deckState.result){const txt=deckState.result.rows.filter(r=>!r.skippedBasic&&r.got<r.w.qty).map(r=>`${r.w.qty-r.got} ${r.w.name}`).join('\n');toast(await copy(txt)?'Missing cards copied':'Copy was blocked');return}
   if(t.id==='printSheet'){try{if(IN_APP&&window.ManaHoardApp.print)window.ManaHoardApp.print(document.querySelector('.sheet h2')?.textContent||'Mana Hoard');else window.print()}catch{toast('Use your browser’s Print option to save it as a PDF')}return}
   if(t.id==='addCol'){S.settings.collections.push(colNorm({name:'New collection',hue:Math.floor(Math.random()*360)}));markDirty();render(false);const all=document.querySelectorAll('.colcard');all[all.length-1]?.scrollIntoView({block:'center'});return}
   if(t.dataset.colmove){const id=t.closest('[data-col]').dataset.col,a=S.settings.collections,i=a.findIndex(c=>c.id===id),j=i+(+t.dataset.colmove);if(j>=0&&j<a.length){[a[i],a[j]]=[a[j],a[i]];markDirty();render(false)}return}
@@ -640,7 +756,9 @@ let qt;document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='mq'){clearTimeout(qt);qt=setTimeout(()=>{mgr.q=t.value;mgr.shown=100;render(false);const m=$('#mq');m.focus();m.setSelectionRange(m.value.length,m.value.length)},250)}});
 document.addEventListener('change',async e=>{const t=e.target;
   if(t.id==='fcol'){shop.col=t.value;shop.shown=48;renderResults()}
-  if(t.id==='fcond'){shop.cond=t.value;renderResults()}if(t.id==='flang'){shop.lang=t.value;renderResults()}if(t.id==='fmax'){shop.max=+t.value;renderResults()}if(t.id==='fset'){shop.set=t.value;renderResults()}if(t.id==='fsort'){shop.sort=t.value;renderResults()}if(t.id==='fstock'){shop.stock=t.checked;renderResults()}
+  if(t.id==='deckpref'){deckState.pref=t.value;if(deckState.result){matchDeck();render(false)}}
+  if(t.id==='deckbasics'){deckState.basics=t.checked;if(deckState.result){matchDeck();render(false)}}
+  if(t.id==='fcond'){shop.cond=t.value;renderResults()}if(t.id==='flang'){shop.lang=t.value;renderResults()}if(t.id==='fmax'){shop.max=+t.value;renderResults()}if(t.id==='fset'){shop.set=t.value;renderResults()}if(t.id==='fsort'){shop.sort=t.value;renderResults()}if(t.id==='fstock'){shop.stock=t.checked;renderResults()}if(t.id==='fsale'){shop.sale=t.checked;renderResults()}
   if(t.dataset&&t.dataset.cf){colChange(t);return}
   if(t.dataset&&t.dataset.inv){const k=t.dataset.inv;inv[k]=k==='post'?Math.max(0,Math.round((parseFloat(t.value)||0)*100)):t.value;saveInv();if(k==='post')render(false);return}
   if(t.dataset&&t.dataset.biz){const k=t.dataset.biz;biz[k]=k==='next'?Math.max(1,parseInt(t.value,10)||1):t.value;saveInv();if(k==='next')render(false);return}
@@ -649,7 +767,7 @@ document.addEventListener('change',async e=>{const t=e.target;
   if(t.dataset.pt){const k=t.dataset.pt,o=S.settings.pt=S.settings.pt||structuredClone(DEFAULTS.pt);o[k]=t.type==='checkbox'?t.checked:k==='rate'?Math.max(0,parseFloat(t.value)||0):t.value;markDirty();if(mgr.pt){ptPreview();render(false)}return}
   if(t.id==='file'&&t.files[0]){const txt=await t.files[0].text();const r=readImport(txt);if(!r||r.error){toast(r?r.error:'That file looks empty');return}mgr.preview=r;render(false)}
   const tr=t.closest&&t.closest('tr[data-id]');if(tr&&t.dataset.f){const i=S.items.find(x=>x.id===tr.dataset.id);if(!i)return;
-    if(t.dataset.f==='qty')i.qty=Math.max(0,parseInt(t.value,10)||0);if(t.dataset.f==='price')i.price=Math.max(0,Math.round((parseFloat(t.value)||0)*100));if(t.dataset.f==='cond')i.cond=t.value;if(t.dataset.f==='cat')i.cat=t.value;markDirty()}
+    if(t.dataset.f==='qty')i.qty=Math.max(0,parseInt(t.value,10)||0);if(t.dataset.f==='price')i.price=Math.max(0,Math.round((parseFloat(t.value)||0)*100));if(t.dataset.f==='was'){const w=Math.round((parseFloat(t.value)||0)*100);if(w>0)i.was=w;else delete i.was}if(t.dataset.f==='cond')i.cond=t.value;if(t.dataset.f==='cat')i.cat=t.value;markDirty()}
   if(t.dataset.set){const k=t.dataset.set,v=parseFloat(t.value)||0,s=S.settings;
     if(k==='markup')s.markup=v;else if(k==='foil')s.foil=v;else if(k==='min')s.min=Math.round(v*100);else if(k.startsWith('floor_'))s.floor[k.slice(6)]=Math.round(v*100);else if(k.startsWith('cond_'))s.cond[k.slice(5)]=v;markDirty()}
 });

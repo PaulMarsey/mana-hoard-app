@@ -37,7 +37,8 @@ assert.equal(lastSession.get('shipping_address_collection[allowed_countries][0]'
 assert.equal(lastSession.get('client_reference_id'), 'MH-ABC123');
 assert.match(lastSession.get('success_url'), /\?paid=\{CHECKOUT_SESSION_ID\}#thanks$/);
 assert.equal(lastSession.get('payment_method_types[0]'), null, 'payment methods left to the Dashboard (cards, Apple Pay, Google Pay)');
-console.log('✓ checkout session uses server prices, GBP, UK shipping, ref, wallets from Dashboard');
+assert.equal(lastSession.get('allow_promotion_codes'), 'true');
+console.log('✓ checkout session uses server prices, GBP, UK shipping, ref, wallets from Dashboard, discount codes on');
 // free shipping over £30
 assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), mjol.price + 2 * stockFile.items.find(i => i.id === 'msh-12').price >= 3000 ? '0' : '150');
 // 2. too many / sold out / unknown

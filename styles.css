@@ -424,3 +424,44 @@ input[type=range].hue::-moz-range-thumb{width:22px;height:22px;border-radius:50%
 .paymarks{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
 .paymarks span{font:800 11.5px/1 Nunito,sans-serif;padding:6px 8px;border-radius:6px;background:#fbefd9;color:#2b1a10;border:1px solid #e8cf9a}
 .sheet.thanks{text-align:center}.sheet.thanks .shead{justify-content:center;gap:28px}
+
+/* ---------- sale prices ---------- */
+.pcard{position:relative}
+.pricewrap{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+s.was{color:var(--muted);font-weight:500;font-size:.78em;text-decoration-thickness:1.5px}
+.salebadge{position:absolute;top:10px;left:10px;padding:4px 9px;border-radius:999px;background:#c8413a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.02em;box-shadow:0 4px 12px rgba(0,0,0,.35)}
+.pcard.onsale{border-color:rgba(232,90,80,.55)}
+.salepill{font-style:normal;font-size:12px;padding:2px 8px;border-radius:999px;background:#c8413a;color:#fff;margin-left:6px}
+
+/* ---------- promise strip ---------- */
+.promise{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.promise li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,200,110,.06);border:1px solid var(--line);font-size:14.5px;line-height:1.3}
+.promise svg{flex:none;width:22px;height:22px;fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.promisebar{margin:26px 0 6px}
+.promise.mini{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:4px 0 12px}
+.promise.mini li{padding:7px 10px;font-size:13px;border-radius:10px}
+.promise.mini svg{width:17px;height:17px}
+@media (max-width:760px){.promise{grid-template-columns:repeat(2,minmax(0,1fr))}.promise li{font-size:13.5px;padding:10px}}
+
+/* ---------- free postage bar ---------- */
+.shipbar{display:grid;gap:7px;margin:10px 0 2px;padding:10px 12px;border-radius:12px;background:rgba(255,200,110,.07);border:1px solid var(--line)}
+.shiptext{font-size:14px}.shiptext b{color:var(--gold2)}
+.shiptrack{height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.shiptrack span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--gold),var(--gold2));transition:width .4s}
+.shipbar.done{border-color:rgba(120,200,120,.5);background:rgba(120,200,120,.08)}
+.shipbar.done .shiptrack span{background:linear-gradient(90deg,#6fbf73,#a5e0a0)}
+
+/* ---------- deck builder ---------- */
+.deckgrid{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:20px;align-items:start;margin-bottom:40px}
+.deckgrid textarea{width:100%;min-height:280px;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;padding:12px;border-radius:12px;border:1px solid var(--line2);background:rgba(0,0,0,.25);color:var(--ink);resize:vertical}
+.decktable td{vertical-align:middle}
+.missing summary{cursor:pointer;list-style:revert}
+.missing ul{margin:10px 0 14px;padding-left:20px;columns:2;column-gap:24px}
+.missing li{margin:3px 0;break-inside:avoid}
+@media (max-width:860px){.deckgrid{grid-template-columns:1fr}.missing ul{columns:1}}
+
+/* ---------- policies ---------- */
+.policies{display:grid;gap:16px;margin-bottom:40px;max-width:860px}
+.policies h2{margin-bottom:8px}
+.policies p,.policies li{line-height:1.6}
+.policies ul{padding-left:20px;margin:8px 0}

@@ -120,7 +120,8 @@
    "sfUri": "https://scryfall.com/card/msh/146/mj%C3%B6lnir-hammer-of-thor?utm_source=api",
    "artist": "Wayne Reynolds",
    "tline": "Legendary Artifact — Equipment",
-   "sfv": 2
+   "sfv": 2,
+   "was": 1895
   },
   {
    "id": "msh-5",
@@ -166,7 +167,8 @@
    "sfUri": "https://scryfall.com/card/msh/156/thor-god-of-thunder?utm_source=api",
    "artist": "Jesper Ejsing",
    "tline": "Legendary Creature — God Warrior Hero",
-   "sfv": 2
+   "sfv": 2,
+   "was": 995
   },
   {
    "id": "msh-7",
@@ -189,7 +191,8 @@
    "sfUri": "https://scryfall.com/card/msh/245/cosmic-cube?utm_source=api",
    "artist": "Justyna Dura",
    "tline": "Artifact",
-   "sfv": 2
+   "sfv": 2,
+   "was": 1050
   },
   {
    "id": "msh-8",

@@ -103,6 +103,7 @@ async function createCheckout(req, env) {
       mode: 'payment',
       line_items: lines,
       shipping_address_collection: { allowed_countries: countries },
+      allow_promotion_codes: 'true',   // customers can enter codes you create in Stripe → Product catalogue → Coupons
       shipping_options: shippingOptions(env, subtotal),
       phone_number_collection: { enabled: 'false' },
       client_reference_id: ref || undefined,
