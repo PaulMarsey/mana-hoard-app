@@ -18,22 +18,23 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v)
 const CONDS={MT:'Mint',NM:'Near Mint',EX:'Excellent',GD:'Good',LP:'Light Played',PL:'Played',PO:'Poor'};
 const CATS=['Singles','Commander','Sealed','Accessories'];
 const DEFAULTS={markup:30,foil:1.5,min:10,floor:{common:10,uncommon:20,rare:50,mythic:150,special:100},cond:{MT:1,NM:1,EX:.9,GD:.8,LP:.7,PL:.55,PO:.35}};
-const DEMO=[
- {id:'d1',name:'Sol Ring',set:'CMR',setName:'Commander Legends',num:'472',finish:'Foil',rarity:'mythic',cond:'NM',lang:'en',qty:4,price:1295,cat:'Commander',live:true,added:8},
- {id:'d2',name:'Forest',set:'MH3',setName:'Modern Horizons 3',num:'309',finish:'Non-foil',rarity:'common',cond:'NM',lang:'en',qty:40,price:65,cat:'Singles',live:true,added:7},
- {id:'d3',name:'Lightning Bolt',set:'PLST',setName:'The List',num:'2XM-129',finish:'Foil',rarity:'rare',cond:'EX',lang:'en',qty:2,price:235,cat:'Singles',live:true,added:6},
- {id:'d4',name:'Commander Masters Deck',set:'CMM',setName:'Commander Masters',num:'',finish:'Deck',rarity:'special',cond:'MT',lang:'en',qty:3,price:4999,cat:'Sealed',live:true,added:5},
- {id:'d5',name:'Arcane Signet',set:'CMR',setName:'Commander Legends',num:'297',finish:'Etched',rarity:'uncommon',cond:'NM',lang:'en',qty:6,price:345,cat:'Commander',live:true,added:4},
- {id:'d6',name:'Dragon Shield Sleeves',set:'ACC',setName:'Accessories',num:'',finish:'Matte',rarity:'special',cond:'MT',lang:'en',qty:12,price:995,cat:'Accessories',live:true,added:3},
- {id:'d7',name:'The One Ring',set:'LTR',setName:'Tales of Middle-earth',num:'246',finish:'Foil',rarity:'mythic',cond:'NM',lang:'en',qty:1,price:1850,cat:'Singles',live:true,added:2},
- {id:'d8',name:'Collector Booster Box',set:'WOE',setName:'Wilds of Eldraine',num:'',finish:'Collector box',rarity:'special',cond:'MT',lang:'en',qty:2,price:13200,cat:'Sealed',live:true,added:1}];
+const DEMO=[{"id":"d1","name":"Captain America, Super-Soldier","set":"MSH","setName":"Marvel Super Heroes","num":"387","finish":"Foil","rarity":"mythic","cond":"NM","lang":"en","qty":1,"price":4675,"cost":3900,"cat":"Singles","live":true,"added":8},
+ {"id":"d2","name":"The Mind Stone","set":"MSH","setName":"Marvel Super Heroes","num":"21","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":2,"price":3995,"cost":3100,"cat":"Commander","live":true,"added":7},
+ {"id":"d3","name":"Mjölnir, Hammer of Thor","set":"MSH","setName":"Marvel Super Heroes","num":"146","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":3,"price":1595,"cost":1250,"cat":"Commander","live":true,"added":6},
+ {"id":"d4","name":"Thor, God of Thunder","set":"MSH","setName":"Marvel Super Heroes","num":"156","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":2,"price":875,"cost":700,"cat":"Singles","live":true,"added":5},
+ {"id":"d5","name":"Captain America, Super-Soldier","set":"MSH","setName":"Marvel Super Heroes","num":"9","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":3,"price":315,"cost":250,"cat":"Singles","live":true,"added":4},
+ {"id":"d6","name":"Gathering Place","set":"MSH","setName":"Marvel Super Heroes","num":"266","finish":"Non-foil","rarity":"rare","cond":"NM","lang":"en","qty":6,"price":145,"cost":110,"cat":"Commander","live":true,"added":3},
+ {"id":"d7","name":"Marvel Super Heroes Play Booster Box","set":"MSH","setName":"Marvel Super Heroes","num":"","finish":"Booster box","rarity":"special","cond":"MT","lang":"en","qty":2,"price":13999,"cost":0,"cat":"Sealed","live":true,"added":2},
+ {"id":"d8","name":"Dragon Shield Sleeves","set":"ACC","setName":"Accessories","num":"","finish":"Matte","rarity":"special","cond":"MT","lang":"en","qty":12,"price":995,"cost":0,"cat":"Accessories","live":true,"added":1}];
 const SAMPLE_CSV=`Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency
-Cultivate,CMM,Commander Masters,281,normal,common,3,101,a1,0.25,false,false,near_mint,en,GBP
-Swords to Plowshares,CMM,Commander Masters,57,normal,uncommon,2,102,a2,1.10,false,false,near_mint,en,GBP
-Rhystic Study,PCY,Prophecy,45,normal,rare,1,103,a3,28.00,false,false,light_played,en,GBP
-Smothering Tithe,RNA,Ravnica Allegiance,22,foil,rare,1,104,a4,19.50,false,false,near_mint,en,GBP
-"Atraxa, Grand Unifier",ONE,Phyrexia: All Will Be One,196,normal,mythic,1,105,a5,9.80,false,false,excellent,en,GBP
-Command Tower,CMM,Commander Masters,1028,etched,common,4,106,a6,,false,false,near_mint,en,GBP`;
+"Thor, God of Thunder",MSH,Marvel Super Heroes,156,normal,mythic,1,201,,7.00,false,false,near_mint,en,GBP
+"Black Widow, Super Spy",MSH,Marvel Super Heroes,89,foil,mythic,1,202,,2.40,false,false,near_mint,en,GBP
+Avengers Assemble!,MSH,Marvel Super Heroes,6,normal,mythic,2,203,,1.10,false,false,excellent,en,GBP
+Gathering Place,MSH,Marvel Super Heroes,266,foil,rare,1,204,,2.20,false,false,near_mint,en,GBP
+"Ultron, Artificial Malevolence",MSH,Marvel Super Heroes,252,normal,mythic,1,205,,6.60,false,false,light_played,en,GBP
+"Quake, Agent of S.H.I.E.L.D.",MSH,Marvel Super Heroes,,normal,,1,206,,0.80,false,false,near_mint,en,GBP
+Hero in Training,MSH,Marvel Super Heroes,,normal,,4,207,,0.10,false,false,near_mint,en,GBP
+Death to Our Enemies,MSH,Marvel Super Heroes,,normal,,2,208,,0.25,false,false,near_mint,en,GBP`;
 
 let S={items:[],settings:structuredClone(DEFAULTS),dirty:false,loaded:false,canManage:true};
 let PUB={items:[],settings:structuredClone(DEFAULTS),updated:null,ok:false};
@@ -46,7 +47,7 @@ const byId=id=>catalogue().list.find(i=>i.id===id);
 const rk=r=>{r=String(r||'').toLowerCase();return r.startsWith('myth')?'mythic':r.startsWith('rare')?'rare':r.startsWith('unc')?'uncommon':r.startsWith('com')?'common':'special'};
 
 function art(l,big){
-  const h=hash(l.set||l.name)%360,sealed=l.cat==='Sealed'||l.cat==='Accessories';
+  const h=hash(l.name+'|'+(l.set||''))%360,sealed=l.cat==='Sealed'||l.cat==='Accessories';
   const glyph=sealed?(l.cat==='Sealed'?'◈':'❖'):['✦','✧','❂','✺','✶','☽'][hash(l.name)%6];
   const foil=isFoil(l.finish||'');
   const frame=`<div class="cart${foil?' foil':''}${sealed?' sealed':''}" style="--h:${h}" aria-hidden="true">
@@ -70,7 +71,8 @@ function renderNav(r){$('#nav').innerHTML=NAV.map(([k,t])=>`<a href="#${k}"${r==
 
 function pHome(){
   const {list,demo}=catalogue();const fav=[...list].sort((a,b)=>b.price-a.price).slice(0,4);const recent=[...list].sort((a,b)=>(b.added||0)-(a.added||0)).slice(0,4);
-  const heroCards=(fav.length>=3?fav:DEMO).slice(0,3);
+  const singles=[...list].filter(isCard).sort((a,b)=>(!!sfImg(b.img)-!!sfImg(a.img))||(b.price-a.price));
+  const heroCards=(singles.length>=3?singles:fav.length>=3?fav:DEMO).slice(0,3);
   return `<section class="hero"><div class="wrap hgrid"><div>
    <h1>Every card has a legend.</h1>
    <p class="lead">Discover your next treasure. Magic: The Gathering singles, Commander staples and sealed product from an independent UK shop built by a player, for players.</p>

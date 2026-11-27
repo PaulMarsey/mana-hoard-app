@@ -1,7 +1,9 @@
 Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency
-Cultivate,CMM,Commander Masters,281,normal,common,3,101,a1,0.25,false,false,near_mint,en,GBP
-Swords to Plowshares,CMM,Commander Masters,57,normal,uncommon,2,102,a2,1.10,false,false,near_mint,en,GBP
-Rhystic Study,PCY,Prophecy,45,normal,rare,1,103,a3,28.00,false,false,light_played,en,GBP
-Smothering Tithe,RNA,Ravnica Allegiance,22,foil,rare,1,104,a4,19.50,false,false,near_mint,en,GBP
-"Atraxa, Grand Unifier",ONE,Phyrexia: All Will Be One,196,normal,mythic,1,105,a5,9.80,false,false,excellent,en,GBP
-Command Tower,CMM,Commander Masters,1028,etched,common,4,106,a6,,false,false,near_mint,en,GBP
+"Thor, God of Thunder",MSH,Marvel Super Heroes,156,normal,mythic,1,201,,7.00,false,false,near_mint,en,GBP
+"Black Widow, Super Spy",MSH,Marvel Super Heroes,89,foil,mythic,1,202,,2.40,false,false,near_mint,en,GBP
+Avengers Assemble!,MSH,Marvel Super Heroes,6,normal,mythic,2,203,,1.10,false,false,excellent,en,GBP
+Gathering Place,MSH,Marvel Super Heroes,266,foil,rare,1,204,,2.20,false,false,near_mint,en,GBP
+"Ultron, Artificial Malevolence",MSH,Marvel Super Heroes,252,normal,mythic,1,205,,6.60,false,false,light_played,en,GBP
+"Quake, Agent of S.H.I.E.L.D.",MSH,Marvel Super Heroes,,normal,,1,206,,0.80,false,false,near_mint,en,GBP
+Hero in Training,MSH,Marvel Super Heroes,,normal,,4,207,,0.10,false,false,near_mint,en,GBP
+Death to Our Enemies,MSH,Marvel Super Heroes,,normal,,2,208,,0.25,false,false,near_mint,en,GBP
