@@ -13,7 +13,8 @@ It's a plain static site: HTML, CSS and JavaScript with no build step, no server
 | `app.js` | Shop pages, basket, Hoard Manager, CSV import and pricing |
 | `data/stock.json` | **Your published stock.** This is what customers see. It ships with example stock from *Marvel Super Heroes* (MSH): real card names and collector numbers, with example prices. Replace it with your own |
 | `data/sample-manabox-export.csv` | Example ManaBox export of Marvel Super Heroes cards to practise importing |
-| `.github/workflows/pages.yml` | Deploys the site to GitHub Pages on every push to `main` |
+| `.github/workflows/pages.yml` | Deploys the site to GitHub Pages on every push to `main`, adding Scryfall images on the way |
+| `scripts/add-scryfall-images.mjs` | Looks up missing card images on Scryfall (used by the deploy; can be run by hand) |
 
 ### Settings you'll want to change
 At the top of `app.js`:
@@ -64,6 +65,7 @@ Card images come from [Scryfall](https://scryfall.com):
 
 - **When you import**, leave "Fetch card images from Scryfall" ticked. The manager looks each card up in batches of 75, within Scryfall's rate limits, using the Scryfall ID in your ManaBox export. If there's no ID it uses set and collector number, and if that doesn't match it tries name and set.
 - **Listings → Card images** shows how many cards have an image. Use **Fetch missing**, **Retry not found** or **Refresh all** (for example if Scryfall replaces an image).
+- **The deploy fills in anything missing.** Every time GitHub Pages deploys, `scripts/add-scryfall-images.mjs` looks up any card in `stock.json` without an image and adds it to the published copy. So a `stock.json` uploaded without images still gets them. You can also run it yourself with `node scripts/add-scryfall-images.mjs` to write the images into the file in your repo.
 - Each card's image link, artist, type line and Scryfall page are saved into `stock.json` when you publish. Shoppers' browsers load images straight from Scryfall's image servers (`cards.scryfall.io`, which has no rate limit) and never call the API.
 - Sealed products and accessories keep the drawn frame. Any card without an image, or whose image fails to load, falls back to the drawn frame automatically.
 - Set `cardImages:false` in `CONFIG` to turn images off.

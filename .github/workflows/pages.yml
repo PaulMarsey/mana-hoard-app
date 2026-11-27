@@ -23,6 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Add Scryfall card images to stock.json
+        run: node scripts/add-scryfall-images.mjs data/stock.json
+        continue-on-error: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
