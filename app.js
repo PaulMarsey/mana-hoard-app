@@ -17,7 +17,7 @@ const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v)
 
 const CONDS={MT:'Mint',NM:'Near Mint',EX:'Excellent',GD:'Good',LP:'Light Played',PL:'Played',PO:'Poor'};
 const CATS=['Singles','Commander','Sealed','Accessories'];
-const DEFAULTS={markup:30,foil:1.5,min:10,floor:{common:10,uncommon:20,rare:50,mythic:150,special:100},cond:{MT:1,NM:1,EX:.9,GD:.8,LP:.7,PL:.55,PO:.35}};
+const DEFAULTS={markup:30,foil:1.5,min:10,floor:{common:10,uncommon:20,rare:50,mythic:150,special:100},cond:{MT:1,NM:1,EX:.9,GD:.8,LP:.7,PL:.55,PO:.35},pt:{rate:0.85,priceMode:'keep',zeroMissing:true,newLive:true,last:null}};
 const DEMO=[{"id":"d1","name":"Captain America, Super-Soldier","set":"MSH","setName":"Marvel Super Heroes","num":"387","finish":"Foil","rarity":"mythic","cond":"NM","lang":"en","qty":1,"price":4675,"cost":3900,"cat":"Singles","live":true,"added":8},
  {"id":"d2","name":"The Mind Stone","set":"MSH","setName":"Marvel Super Heroes","num":"21","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":2,"price":3995,"cost":3100,"cat":"Commander","live":true,"added":7},
  {"id":"d3","name":"Mjölnir, Hammer of Thor","set":"MSH","setName":"Marvel Super Heroes","num":"146","finish":"Non-foil","rarity":"mythic","cond":"NM","lang":"en","qty":3,"price":1595,"cost":1250,"cat":"Commander","live":true,"added":6},
@@ -40,7 +40,7 @@ let S={items:[],settings:structuredClone(DEFAULTS),dirty:false,loaded:false,canM
 let PUB={items:[],settings:structuredClone(DEFAULTS),updated:null,ok:false};
 let basket=store.get('mh-basket',[]);
 let shop={q:'',cat:'All',stock:false,sort:'newest',finish:'All',cond:'All',set:'All',shown:48};
-let mgr={tab:'import',preview:null,q:'',filter:'all',shown:100};
+let mgr={pt:null,tab:'import',preview:null,q:'',filter:'all',shown:100};
 
 const catalogue=()=>{if(!PUB.ok)return {list:DEMO,demo:true};return {list:PUB.items.filter(i=>i.live),demo:false}};
 const byId=id=>catalogue().list.find(i=>i.id===id);
@@ -145,11 +145,11 @@ function pManager(){
   if(!S.canManage)return `<section class="band wrap"><h1>Hoard Manager</h1><p class="muted">Only the shop owner and editors can manage stock.</p></section>`;
   const it=S.items,live=it.filter(i=>i.live);
   const val=live.reduce((s,i)=>s+i.price*i.qty,0),cards=it.reduce((s,i)=>s+i.qty,0);
-  const tabs=[['import','Import from ManaBox'],['listings','Listings'],['pricing','Pricing rules'],['publish','Publish'+(unpublished()?' •':'')],['export','Marketplace export']];
-  return `<section class="band wrap"><div class="head"><div><h1>Hoard Manager</h1><p class="muted" style="max-width:46em">This is your working copy, saved in this browser. Customers see <code>${esc(CONFIG.stockFile)}</code>${PUB.updated?` (published ${esc(new Date(PUB.updated).toLocaleString('en-GB'))})`:''} — use <b>Publish</b> to update it.</p></div><span id="savestate" class="pill${unpublished()?' low':''}">${unpublished()?'Unpublished changes':'Matches the live shop'}</span></div>
+  const tabs=[['import','Import from ManaBox'],['powertools','TCG PowerTools'],['listings','Listings'],['pricing','Pricing rules'],['publish','Publish'+(unpublished()?' •':'')],['export','Marketplace export']];
+  return `<section class="band wrap"><div class="head"><div><h1>Hoard Manager</h1><p class="muted" style="max-width:46em">This is your working copy, saved in this browser. Customers see <code>${esc(CONFIG.stockFile)}</code>${PUB.updated?` (published ${esc(new Date(PUB.updated).toLocaleString('en-GB'))})`:''} — use <b>Publish</b> to update it.</p>${S.stale?`<p class="note" style="margin-top:10px">The live shop’s stock changed after you started this working copy (for example a TCG PowerTools sync or new images). <button class="linkbtn" id="resetWork2">Reset to published stock</button> to pick those changes up before editing.</p>`:''}</div><span id="savestate" class="pill${unpublished()?' low':''}">${unpublished()?'Unpublished changes':'Matches the live shop'}</span></div>
   <div class="stats"><div class="stat"><b>${it.length}</b><span>listings</span></div><div class="stat"><b>${cards}</b><span>cards in stock</span></div><div class="stat"><b>${live.length}</b><span>live in the shop</span></div><div class="stat"><b>${gbp(val)}</b><span>live stock value</span></div></div>
   <div class="tabs" role="tablist">${tabs.map(([k,t])=>`<button role="tab" data-tab="${k}" aria-selected="${mgr.tab===k}">${t}</button>`).join('')}</div>
-  <div id="mpanel">${({import:mImport,listings:mListings,pricing:mPricing,publish:mPublish,export:mExport})[mgr.tab]()}</div></section>`}
+  <div id="mpanel">${({import:mImport,powertools:mPowerTools,listings:mListings,pricing:mPricing,publish:mPublish,export:mExport})[mgr.tab]()}</div></section>`}
 
 function mImport(){
   const p=mgr.preview;
@@ -204,8 +204,36 @@ function mExport(){
   <div class="box"><h2>Shopify products CSV</h2><p class="muted">One product per card with a variant per condition and finish, so Shopify can stay the source of truth for checkout and stock when you connect it.</p><button class="btn" data-exp="sh"${live.length?'':' disabled'}>Build CSV (${live.length})</button></div></div>
   <div id="expout" style="margin-top:20px"></div>`}
 
-const stockJSON=()=>JSON.stringify({updated:new Date().toISOString(),settings:S.settings,items:S.items},null,1);
-const unpublished=()=>JSON.stringify({s:S.settings,i:S.items})!==JSON.stringify({s:PUB.settings,i:PUB.items});
+// purchase prices (cost) never leave your browser: stock.json is public
+const publicItems=a=>a.map(({cost,...r})=>r);
+const stockJSON=(at=new Date().toISOString())=>JSON.stringify({updated:at,settings:S.settings,items:publicItems(S.items)},null,1);
+const unpublished=()=>JSON.stringify({s:S.settings,i:publicItems(S.items)})!==JSON.stringify({s:PUB.settings,i:publicItems(PUB.items)});
+
+function mPowerTools(){
+  const o=S.settings.pt||DEFAULTS.pt,p=mgr.pt,R=p&&p.report;
+  const list=(rows,fmt)=>rows.length?`<div class="tbl" style="max-height:260px;margin-top:8px"><table><tbody>${rows.slice(0,200).map(fmt).join('')}</tbody></table></div>${rows.length>200?`<p class="muted small">…and ${rows.length-200} more</p>`:''}`:'<p class="muted small">None</p>';
+  return `<div class="two"><div style="display:grid;gap:14px;align-content:start"><h2>Sync stock from TCG PowerTools</h2>
+   <p class="muted" style="margin:0">PowerTools keeps your Cardmarket and other marketplace stock. In PowerTools, click <b>Export</b> and download your stock as CSV, then drop it here. Quantities update to match, so cards that sold on other platforms drop here too.${o.last?` Last synced ${esc(new Date(o.last).toLocaleString('en-GB'))}.`:''}</p>
+   <div><label class="l" for="ptfile">PowerTools export (CSV)</label><input type="file" id="ptfile" accept=".csv,text/csv,.txt"></div>
+   <div class="box" style="display:grid;gap:10px">
+    <label class="check"><input type="checkbox" data-pt="zeroMissing"${o.zeroMissing?' checked':''}> Mark cards that aren’t in the export as sold out</label>
+    <label class="check"><input type="checkbox" data-pt="newLive"${o.newLive?' checked':''}> Put new cards straight into the shop</label>
+    <div><span class="l">Prices</span>
+     <label class="check"><input type="radio" name="ptprice" data-pt="priceMode" value="keep"${o.priceMode!=='powertools'?' checked':''}> Keep my shop prices (new cards use the PowerTools price, converted)</label>
+     <label class="check"><input type="radio" name="ptprice" data-pt="priceMode" value="powertools"${o.priceMode==='powertools'?' checked':''}> Use PowerTools prices for everything</label></div>
+    <div><label class="l" for="ptrate">£ per €1 (PowerTools prices are in euros)</label><input type="number" id="ptrate" data-pt="rate" step="0.01" min="0" value="${o.rate}" style="max-width:140px"></div>
+   </div>
+   <p class="muted small" style="margin:0">Want this to happen without opening the manager? See “Daily sync” in the README: upload the export to <code>data/powertools/</code> on GitHub, or give the daily job a download link.</p></div>
+   <div>${R?`<h2>What will change</h2>
+    <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr));margin:14px 0"><div class="stat"><b>${R.changed.length}</b><span>updated</span></div><div class="stat"><b>${R.added.length}</b><span>new cards</span></div><div class="stat"><b>${R.soldOut.length}</b><span>now sold out</span></div></div>
+    <p class="muted small">${p.rows.length} rows read from the export${p.skipped?`, ${p.skipped} skipped (no name, ID or quantity)`:''}. ${R.unchanged} listings already match.</p>
+    <details open><summary><b>Updated (${R.changed.length})</b></summary>${list(R.changed,c=>`<tr><td>${esc(c.name)} <span class="muted small">${esc(c.set||'')}</span></td><td class="n">${c.fromQty} → <b>${c.toQty}</b></td><td class="n">${c.fromPrice!==c.toPrice?`${gbp(c.fromPrice)} → <b>${gbp(c.toPrice)}</b>`:gbp(c.toPrice)}</td></tr>`)}</details>
+    <details><summary><b>New cards (${R.added.length})</b></summary>${list(R.added,c=>`<tr><td>${esc(c.name)} <span class="muted small">${esc(c.set||'')}</span></td><td class="n">× ${c.qty}</td><td class="n">${gbp(c.price)}</td></tr>`)}</details>
+    <details><summary><b>Sold out (${R.soldOut.length})</b></summary>${list(R.soldOut,c=>`<tr><td>${esc(c.name)} <span class="muted small">${esc(c.set||'')}</span></td><td class="n">${c.fromQty} → <b>0</b></td></tr>`)}</details>
+    <div class="row" style="margin-top:14px"><button class="btn gold" id="ptApply">Apply these changes</button><button class="btn ghost" id="ptDiscard">Discard</button></div>
+    <p class="muted small">Applying updates your working copy. Then use <b>Publish</b> to put it live.</p>`
+   :`<div class="empty"><h3>No export read yet</h3><p>A preview of every change appears here before anything is applied.</p></div>`}</div></div>`}
+function ptPreview(){if(!mgr.pt)return;const o=S.settings.pt;const m=PowerToolsSync.mergeStock(S.items,mgr.pt.rows,{...o,priceFor,uid,now:Date.now()});mgr.pt.report=m.report;mgr.pt.items=m.items}
 function mPublish(){
   return `<div class="two"><div class="box" style="display:grid;gap:12px"><h2>Publish to your shop</h2>
    <ol style="margin:0;padding-left:20px;display:grid;gap:6px"><li>Download <b>stock.json</b> below.</li><li>In your GitHub repository, open the <code>data</code> folder and replace <code>stock.json</code> with the new file (Add file → Upload files), then commit.</li><li>GitHub Pages redeploys in a minute or two and customers see the new stock.</li></ol>
@@ -273,7 +301,8 @@ async function sfPost(idents){
     return r.json()}
   throw new Error('Scryfall is busy — try again in a few minutes')}
 async function sfGetOne(i){ // fallback when a batch request can't be made
-  const id=primaryIdent(i);const url=id.id?`https://api.scryfall.com/cards/${id.id}`:id.collector_number?`https://api.scryfall.com/cards/${encodeURIComponent(id.set)}/${encodeURIComponent(id.collector_number)}`:`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(i.name)}${id.set?'&set='+encodeURIComponent(id.set):''}`;
+  const id=primaryIdent(i);if(!id.id&&i.cmid&&!id.collector_number){const r=await fetch(`https://api.scryfall.com/cards/cardmarket/${encodeURIComponent(i.cmid)}`,{headers:SF_HEAD});await sleep(120);return r.ok?r.json():null}
+  const url=id.id?`https://api.scryfall.com/cards/${id.id}`:id.collector_number?`https://api.scryfall.com/cards/${encodeURIComponent(id.set)}/${encodeURIComponent(id.collector_number)}`:`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(i.name)}${id.set?'&set='+encodeURIComponent(id.set):''}`;
   const r=await fetch(url,{headers:SF_HEAD});await sleep(id.collector_number||id.id?120:550);return r.ok?r.json():null}
 async function lookupBatch(batch,mkIdent){
   const idents=batch.map(mkIdent);const res=await sfPost(idents);const cards=Array.isArray(res.data)?res.data:[];
@@ -282,10 +311,14 @@ async function lookupBatch(batch,mkIdent){
     const c=cards.find(c=>id.id?c.id===id.id:id.collector_number?(String(c.set).toLowerCase()===id.set&&String(c.collector_number).toLowerCase()===id.collector_number.toLowerCase()&&sameName(c,i)):(sameName(c,i)&&(!id.set||String(c.set).toLowerCase()===id.set)));
     if(!(c&&applyCard(i,c)))left.push(i)}
   return left}
-async function runImages(list){
+async function runImages(list){list=[...list];
   if(SF.busy||!list.length){if(!list.length)toast('Every card already has an image');return}
   SF.busy=true;SF.done=0;SF.total=list.length;SF.note='';sfStatus();let missed=0,fallback=false;
   try{
+    // cards that came from PowerTools carry a Cardmarket ID: look those up one by one (Scryfall's batch endpoint doesn't take them)
+    const cm=list.filter(i=>i.cmid&&!UUID.test(i.sid||'')&&!(i.set&&i.num));list=list.filter(i=>!cm.includes(i));
+    for(const i of cm){const c=await sfGetOne(i).catch(()=>null);if(!(c&&applyCard(i,c))){i.imgMiss=true;missed++}SF.done++;sfStatus()}
+    if(cm.length)markDirty();
     for(let k=0;k<list.length;k+=75){
       const batch=list.slice(k,k+75);let left=batch;
       if(!fallback){
@@ -308,7 +341,7 @@ function sfStatus(){const e=$('#sfstatus');if(e)e.textContent=sfText();const st=
 /* ---------- persistence ---------- */
 let saveTimer=null;
 function markDirty(){clearTimeout(saveTimer);saveTimer=setTimeout(save,400);const ss=$('#savestate');if(ss){ss.textContent='Unpublished changes';ss.classList.add('low')}}
-function save(){store.set('mh-work',{settings:S.settings,items:S.items})}
+function save(){store.set('mh-work',{settings:S.settings,items:S.items,basedOn:S.basedOn||PUB.updated||null})}
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 
 /* ---------- basket ---------- */
@@ -387,10 +420,13 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
      :['Handle,Title,Vendor,Type,Tags,Published,Option1 Name,Option1 Value,Variant SKU,Variant Inventory Qty,Variant Price,Variant Requires Shipping',...live.map(i=>{const h=(i.name+'-'+i.set+'-'+(i.num||'')).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');return [h,i.name,'Mana Hoard',i.cat,[i.set,rk(i.rarity),i.finish].join(', '),'TRUE','Condition',`${CONDS[i.cond]} ${i.finish}`,i.id,i.qty,(i.price/100).toFixed(2),'TRUE'].map(q).join(',')})];
     const txt=csv.join('\n');$('#expout').innerHTML=`<div class="bar"><b>${live.length} rows</b><div class="row"><button class="btn sm" id="dlExp" data-name="${t.dataset.exp==='cm'?'cardmarket-stock.csv':'shopify-products.csv'}">Download CSV</button><button class="btn sm ghost" id="copyExp">Copy CSV</button></div></div><textarea readonly style="min-height:260px;font:13px/1.4 ui-monospace,monospace" id="exptxt"></textarea>`;$('#exptxt').value=txt;return}
   if(t.id==='copyExp'){const ok=await copy($('#exptxt').value);toast(ok?'CSV copied — paste into a .csv file or sheet':'Copy blocked — select the text and copy it');if(!ok)$('#exptxt').select();return}
+  if(t.id==='ptApply'&&mgr.pt){const R=mgr.pt.report;S.items=mgr.pt.items;S.settings.pt.last=new Date().toISOString();const added=R.added.map(a=>a.id);mgr.pt=null;mgr.tab='publish';markDirty();render(false);
+    toast(`Synced: ${R.changed.length} updated, ${R.added.length} new, ${R.soldOut.length} sold out — now publish`);const need=S.items.filter(i=>added.includes(i.id)&&needsImg(i));if(need.length)runImages(need);return}
+  if(t.id==='ptDiscard'){mgr.pt=null;render(false);return}
   if(t.id==='dlExp'){download(t.dataset.name,$('#exptxt').value,'text/csv');return}
-  if(t.id==='dlStock'){download('stock.json',stockJSON(),'application/json');toast('stock.json downloaded — upload it to data/ in your repo');return}
+  if(t.id==='dlStock'){const at=new Date().toISOString();download('stock.json',stockJSON(at),'application/json');S.basedOn=at;S.stale=false;save();toast('stock.json downloaded — upload it to data/ in your repo');return}
   if(t.id==='cpStock'){toast(await copy(stockJSON())?'JSON copied':'Copy was blocked');return}
-  if(t.id==='resetWork'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to confirm';return}S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);save();render(false);toast('Working copy reset to the live shop');return}
+  if(t.id==='resetWork'||t.id==='resetWork2'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to confirm';return}S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);S.basedOn=PUB.updated;S.stale=false;save();render(false);toast('Working copy reset to the live shop');return}
 });
 $('#scrim').addEventListener('click',()=>openDrawer(false));
 document.addEventListener('load',e=>{const t=e.target;if(t.classList&&t.classList.contains('cimg'))t.parentElement.classList.add('loaded')},true);
@@ -402,6 +438,8 @@ let qt;document.addEventListener('input',e=>{const t=e.target;
   if(t.id==='mq'){clearTimeout(qt);qt=setTimeout(()=>{mgr.q=t.value;mgr.shown=100;render(false);const m=$('#mq');m.focus();m.setSelectionRange(m.value.length,m.value.length)},250)}});
 document.addEventListener('change',async e=>{const t=e.target;
   if(t.id==='fcond'){shop.cond=t.value;renderResults()}if(t.id==='fset'){shop.set=t.value;renderResults()}if(t.id==='fsort'){shop.sort=t.value;renderResults()}if(t.id==='fstock'){shop.stock=t.checked;renderResults()}
+  if(t.id==='ptfile'&&t.files[0]){const r=PowerToolsSync.readPowerTools(await t.files[0].text());if(r.error){toast(r.error);return}mgr.pt=r;ptPreview();render(false);return}
+  if(t.dataset.pt){const k=t.dataset.pt,o=S.settings.pt=S.settings.pt||structuredClone(DEFAULTS.pt);o[k]=t.type==='checkbox'?t.checked:k==='rate'?Math.max(0,parseFloat(t.value)||0):t.value;markDirty();if(mgr.pt){ptPreview();render(false)}return}
   if(t.id==='file'&&t.files[0]){const txt=await t.files[0].text();const r=readImport(txt);if(!r||r.error){toast(r?r.error:'That file looks empty');return}mgr.preview=r;render(false)}
   const tr=t.closest&&t.closest('tr[data-id]');if(tr&&t.dataset.f){const i=S.items.find(x=>x.id===tr.dataset.id);if(!i)return;
     if(t.dataset.f==='qty')i.qty=Math.max(0,parseInt(t.value,10)||0);if(t.dataset.f==='price')i.price=Math.max(0,Math.round((parseFloat(t.value)||0)*100));if(t.dataset.f==='cond')i.cond=t.value;if(t.dataset.f==='cat')i.cat=t.value;markDirty()}
@@ -416,11 +454,12 @@ document.addEventListener('submit',async e=>{if(e.target.id!=='cform')return;e.p
 const clean=a=>(Array.isArray(a)?a:[]).filter(x=>x&&x.id&&x.name).map(x=>({...x,qty:+x.qty||0,price:+x.price||0}));
 async function boot(){
   try{const r=await fetch(CONFIG.stockFile,{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();
-    PUB={items:clean(j.items),settings:{...structuredClone(DEFAULTS),...(j.settings||{})},updated:j.updated||null,ok:true}}
+    PUB={items:clean(j.items),settings:{...structuredClone(DEFAULTS),...(j.settings||{})},updated:j.updated||null,ok:true};PUB.settings.pt={...structuredClone(DEFAULTS.pt),...((j.settings||{}).pt||{})}}
   catch{PUB.ok=false;console.warn('Could not load',CONFIG.stockFile,'— showing sample stock. Serve the site over http(s), not file://.')}
   const w=store.get('mh-work',null);
-  if(w&&Array.isArray(w.items)){S.items=clean(w.items);S.settings={...structuredClone(DEFAULTS),...(w.settings||{})}}
-  else{S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings)}
+  if(w&&Array.isArray(w.items)){S.items=clean(w.items);S.settings={...structuredClone(DEFAULTS),...(w.settings||{})};S.basedOn=w.basedOn||null;S.settings.pt={...structuredClone(DEFAULTS.pt),...(S.settings.pt||{})};
+    S.stale=!!(PUB.ok&&PUB.updated&&(!S.basedOn||Date.parse(PUB.updated)>Date.parse(S.basedOn))&&unpublished())}
+  else{S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);S.basedOn=PUB.updated}
   S.loaded=true;render(false);renderBasket()}
 if(CONFIG.demoBanner)$('#demo').textContent=CONFIG.demoBanner;else $('#demo').remove();
 $('#femail').textContent=CONFIG.shopEmail;

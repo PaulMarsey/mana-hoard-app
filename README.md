@@ -13,7 +13,10 @@ It's a plain static site: HTML, CSS and JavaScript with no build step, no server
 | `app.js` | Shop pages, basket, Hoard Manager, CSV import and pricing |
 | `data/stock.json` | **Your published stock.** This is what customers see. It ships with example stock from *Marvel Super Heroes* (MSH): real card names and collector numbers, with example prices. Replace it with your own |
 | `data/sample-manabox-export.csv` | Example ManaBox export of Marvel Super Heroes cards to practise importing |
-| `.github/workflows/pages.yml` | Deploys the site to GitHub Pages on every push to `main`, adding Scryfall images on the way |
+| `.github/workflows/pages.yml` | On every push and daily: TCG PowerTools sync, Scryfall images, save stock, deploy to GitHub Pages |
+| `lib/powertools.js` | Reads PowerTools exports and works out stock changes (used by the manager and the daily job) |
+| `scripts/sync-powertools.mjs` | The daily job's PowerTools sync |
+| `data/powertools/` | Drop PowerTools exports here to sync them |
 | `scripts/add-scryfall-images.mjs` | Looks up missing card images on Scryfall (used by the deploy; can be run by hand) |
 
 ### Settings you'll want to change
@@ -71,6 +74,24 @@ Card images come from [Scryfall](https://scryfall.com):
 - Set `cardImages:false` in `CONFIG` to turn images off.
 
 Scryfall's terms ask that card images aren't cropped, stretched, recoloured or watermarked, and that the artist and copyright line stay visible. The site shows them whole and credits the artist and Scryfall. Keep it that way if you restyle.
+
+### Daily sync with TCG PowerTools
+TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTrader or anywhere else PowerTools manages reduce the quantities here. PowerTools has no public API, so the sync works from its **CSV stock export** (PowerTools → **Export**).
+
+**Three ways to run it:**
+
+1. **From the Hoard Manager:** **TCG PowerTools** tab → choose the export. You'll see a preview of every change (updated quantities, new cards, cards now sold out) before you click **Apply**, then **Publish**. The file never leaves your browser.
+2. **Upload to GitHub (hands-off):** upload the export to `data/powertools/` (works from the GitHub mobile app). The deploy merges it, adds Scryfall images, saves `stock.json` and deletes the CSV. The run's summary under **Actions** lists every change.
+3. **Fully automatic daily:** if you can get a link that always downloads your latest PowerTools export (ask PowerTools support whether they offer one), add it as a repository secret named `POWERTOOLS_EXPORT_URL` (**Settings → Secrets and variables → Actions → New repository secret**). A scheduled job runs every day at 05:41 UK time in winter (06:41 in summer), downloads it, syncs and redeploys.
+
+**How it matches cards:** by Cardmarket ID first, otherwise by name + set, and always by condition, language and foil. Settings (saved from the manager's TCG PowerTools tab and used by the GitHub job too):
+- **Mark cards that aren't in the export as sold out.** Turn this off while PowerTools doesn't yet hold everything you list here. Sealed products and accessories are never zeroed. The GitHub job refuses an export that would sell out more than 80% of a large shop, in case it's partial or the wrong file.
+- **Prices:** keep your shop prices, or use PowerTools prices converted at your £-per-€ rate.
+- **New cards** go live straight away or arrive as drafts.
+
+**Going the other way:** orders taken on this site arrive by email. When you send one, reduce the stock in PowerTools too, and the next sync carries it everywhere. There's no automatic push back to PowerTools without an API.
+
+**Privacy:** purchase prices (`buyPrice` or cost) are never written to the published `stock.json`. This repository is public, and files uploaded to `data/powertools/` stay in its history. Remove private columns before uploading, or use options 1 or 3.
 
 ### Selling elsewhere
 **Marketplace export** builds:

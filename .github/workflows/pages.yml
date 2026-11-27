@@ -1,18 +1,20 @@
-name: Deploy to GitHub Pages
+name: Sync stock and deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '41 5 * * *'   # every day at 05:41 UTC: TCG PowerTools sync + any missing card images
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # to save the synced stock.json back to the repo
   pages: write
   id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -26,9 +28,27 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Sync stock from TCG PowerTools
+        run: node scripts/sync-powertools.mjs
+        continue-on-error: true
+        env:
+          POWERTOOLS_EXPORT_URL: ${{ secrets.POWERTOOLS_EXPORT_URL }}
+
       - name: Add Scryfall card images to stock.json
         run: node scripts/add-scryfall-images.mjs data/stock.json
         continue-on-error: true
+
+      - name: Save updated stock to the repo
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A data
+          if git diff --cached --quiet; then echo "Stock unchanged."; exit 0; fi
+          git commit -m "Update stock (PowerTools sync / Scryfall images)"
+          git pull --rebase --autostash origin main && git push origin HEAD:main
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .

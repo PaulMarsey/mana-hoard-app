@@ -11,8 +11,8 @@ const API = process.env.SCRYFALL_API || 'https://api.scryfall.com';
 const HEADERS = {
   'User-Agent': 'ManaHoard/1.0 (+https://github.com/PaulMarsey/mana-hoard-app)',
   'Accept': 'application/json;q=0.9,*/*;q=0.8',
-  'Content-Type': 'application/json',
 };
+const POST_HEADERS = { ...HEADERS, 'Content-Type': 'application/json' };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const sfImg = u => typeof u === 'string' && /^https:\/\/[a-z0-9.-]+\.scryfall\.io\//i.test(u) ? u : '';
@@ -42,7 +42,7 @@ function applyCard(i, c) {
 }
 async function post(idents) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const r = await fetch(`${API}/cards/collection`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ identifiers: idents }) });
+    const r = await fetch(`${API}/cards/collection`, { method: 'POST', headers: POST_HEADERS, body: JSON.stringify({ identifiers: idents }) });
     if (r.status === 429) { console.log('Scryfall asked us to slow down; waiting 31s'); await sleep(31000); continue; }
     if (!r.ok) throw new Error(`Scryfall replied ${r.status}`);
     await sleep(550);
@@ -72,8 +72,18 @@ if (!todo.length) { console.log('Every card already has a Scryfall image.'); pro
 console.log(`Looking up ${todo.length} card(s) on Scryfall…`);
 let missed = [];
 try {
-  for (let k = 0; k < todo.length; k += 75) {
-    const batch = todo.slice(k, k + 75);
+  // cards synced from TCG PowerTools carry a Cardmarket ID; Scryfall looks those up one at a time
+  const cm = todo.filter(i => i.cmid && !UUID.test(i.sid || '') && !(i.set && i.num));
+  for (const i of cm) {
+    const r = await fetch(`${API}/cards/cardmarket/${encodeURIComponent(i.cmid)}`, { headers: HEADERS });
+    await sleep(120);
+    if (r.status === 429) { await sleep(31000); }
+    const c = r.ok ? await r.json() : null;
+    if (!(c && applyCard(i, c))) missed.push(i);
+  }
+  const rest = todo.filter(i => !cm.includes(i));
+  for (let k = 0; k < rest.length; k += 75) {
+    const batch = rest.slice(k, k + 75);
     let left = await lookup(batch, primaryIdent);
     const retry = left.filter(i => i.set && !UUID.test(i.sid || ''));
     if (retry.length) {
@@ -86,6 +96,7 @@ try {
   console.log(`::warning::Scryfall lookup stopped early: ${e.message}. The site still deploys; cards without images show the drawn frame.`);
 }
 const found = todo.filter(i => sfImg(i.img)).length;
+stock.items = items.map(({ cost, ...r }) => r);
 await writeFile(FILE, JSON.stringify(stock, null, 1) + '\n');
 console.log(`Added images for ${found} of ${todo.length} card(s).`);
 if (missed.length) console.log(`Not found on Scryfall: ${missed.map(i => `${i.name} (${i.set} ${i.num || ''})`).join(', ')}`);

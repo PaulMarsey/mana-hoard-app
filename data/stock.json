@@ -19,6 +19,13 @@
    "LP": 0.7,
    "PL": 0.55,
    "PO": 0.35
+  },
+  "pt": {
+   "rate": 0.85,
+   "priceMode": "keep",
+   "zeroMissing": true,
+   "newLive": true,
+   "last": null
   }
  },
  "items": [
@@ -34,7 +41,6 @@
    "lang": "en",
    "qty": 1,
    "price": 4675,
-   "cost": 3900,
    "cat": "Singles",
    "live": true,
    "added": 1795779000000
@@ -51,7 +57,6 @@
    "lang": "en",
    "qty": 2,
    "price": 3995,
-   "cost": 3100,
    "cat": "Commander",
    "live": true,
    "added": 1795778940000
@@ -68,7 +73,6 @@
    "lang": "en",
    "qty": 1,
    "price": 2150,
-   "cost": 1700,
    "cat": "Singles",
    "live": true,
    "added": 1795778880000
@@ -85,7 +89,6 @@
    "lang": "en",
    "qty": 3,
    "price": 1595,
-   "cost": 1250,
    "cat": "Commander",
    "live": true,
    "added": 1795778820000
@@ -102,7 +105,6 @@
    "lang": "en",
    "qty": 1,
    "price": 1540,
-   "cost": 1200,
    "cat": "Singles",
    "live": true,
    "added": 1795778760000
@@ -119,7 +121,6 @@
    "lang": "en",
    "qty": 2,
    "price": 875,
-   "cost": 700,
    "cat": "Singles",
    "live": true,
    "added": 1795778700000
@@ -136,7 +137,6 @@
    "lang": "en",
    "qty": 2,
    "price": 865,
-   "cost": 680,
    "cat": "Commander",
    "live": true,
    "added": 1795778640000
@@ -153,7 +153,6 @@
    "lang": "en",
    "qty": 1,
    "price": 845,
-   "cost": 660,
    "cat": "Singles",
    "live": true,
    "added": 1795778580000
@@ -170,7 +169,6 @@
    "lang": "en",
    "qty": 3,
    "price": 315,
-   "cost": 250,
    "cat": "Singles",
    "live": true,
    "added": 1795778520000
@@ -187,7 +185,6 @@
    "lang": "en",
    "qty": 2,
    "price": 265,
-   "cost": 200,
    "cat": "Commander",
    "live": true,
    "added": 1795778460000
@@ -204,7 +201,6 @@
    "lang": "en",
    "qty": 2,
    "price": 245,
-   "cost": 200,
    "cat": "Singles",
    "live": true,
    "added": 1795778400000
@@ -221,7 +217,6 @@
    "lang": "en",
    "qty": 4,
    "price": 150,
-   "cost": 110,
    "cat": "Commander",
    "live": true,
    "added": 1795778340000
@@ -238,7 +233,6 @@
    "lang": "en",
    "qty": 3,
    "price": 145,
-   "cost": 110,
    "cat": "Singles",
    "live": true,
    "added": 1795778280000
@@ -255,7 +249,6 @@
    "lang": "en",
    "qty": 6,
    "price": 145,
-   "cost": 110,
    "cat": "Commander",
    "live": true,
    "added": 1795778220000
@@ -272,7 +265,6 @@
    "lang": "en",
    "qty": 2,
    "price": 13999,
-   "cost": 0,
    "cat": "Sealed",
    "live": true,
    "added": 1795777800000
@@ -289,7 +281,6 @@
    "lang": "en",
    "qty": 6,
    "price": 2499,
-   "cost": 0,
    "cat": "Sealed",
    "live": true,
    "added": 1795777740000
@@ -306,7 +297,6 @@
    "lang": "en",
    "qty": 4,
    "price": 4499,
-   "cost": 0,
    "cat": "Sealed",
    "live": true,
    "added": 1795777680000
@@ -323,7 +313,6 @@
    "lang": "en",
    "qty": 12,
    "price": 995,
-   "cost": 0,
    "cat": "Accessories",
    "live": true,
    "added": 1795777620000
