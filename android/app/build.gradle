@@ -1,0 +1,33 @@
+plugins { id 'com.android.application' }
+
+// The shop this app opens. Change both if you move to your own domain (e.g. manahoard.co.uk).
+def shopHost = 'paulmarsey.github.io'
+def shopUrl  = 'https://paulmarsey.github.io/mana-hoard-app/'
+
+android {
+    namespace 'uk.co.manahoard.app'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'uk.co.manahoard.app'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '0.1-test'
+        manifestPlaceholders = [shopHost: shopHost, shopUrl: shopUrl]
+        resValue 'string', 'asset_statements', "[{\\\"relation\\\": [\\\"delegate_permission/common.handle_all_urls\\\"], \\\"target\\\": {\\\"namespace\\\": \\\"web\\\", \\\"site\\\": \\\"https://${shopHost}\\\"}}]"
+    }
+    // TEST signing key only (committed so each test build installs over the last).
+    // Make a private key before publishing to Google Play.
+    signingConfigs {
+        test { storeFile file('../test-signing.keystore'); storePassword 'manahoard-test'; keyAlias 'manahoard'; keyPassword 'manahoard-test' }
+    }
+    buildTypes {
+        debug { signingConfig signingConfigs.test }
+        release { signingConfig signingConfigs.test; minifyEnabled false }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+
+dependencies {
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.4.0'
+}

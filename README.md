@@ -18,6 +18,8 @@ It's a plain static site: HTML, CSS and JavaScript with no build step, no server
 | `.github/workflows/pages.yml` | On every push and daily: TCG PowerTools sync, Scryfall images, save stock, deploy to GitHub Pages |
 | `lib/powertools.js` | Reads PowerTools exports and works out stock changes (used by the manager and the daily job) |
 | `scripts/sync-powertools.mjs` | The daily job's PowerTools sync |
+| `android/` | Android app (Trusted Web Activity) that opens the shop; built by `.github/workflows/build-android.yml` |
+| `manifest.webmanifest` | Lets phones install the shop to the home screen |
 | `checkout-worker/` | The Stripe checkout server (Cloudflare Worker), its settings and tests |
 | `.github/workflows/deploy-checkout.yml` | One-click deploy of the checkout server |
 | `data/powertools/` | Drop PowerTools exports here to sync them |
@@ -136,6 +138,16 @@ TCG PowerTools can be the master copy of your stock. Sales on Cardmarket, CardTr
 ## How orders work right now
 
 With `checkoutUrl` set, shoppers pay through Stripe (see **Card payments** above). Without it, there's no payment step. The basket's **Email this order** button opens the customer's email app with their order and reference filled in, addressed to `shopEmail`. You confirm stock and postage, send an invoice from **Invoices** (with a PayPal or bank-transfer note), mark the cards sold, and publish.
+
+## Android app (test build)
+`android/` is a small Android app that opens the live shop full-screen using Chrome's engine (a *Trusted Web Activity*). It always shows the latest shop, with no app update needed when you publish stock, and Google Pay works at checkout.
+
+- **Get the APK:** every change under `android/` builds automatically (or run **Actions → Build Android test app**). Download `mana-hoard-test.apk` from the **android-test** release: `https://github.com/PaulMarsey/mana-hoard-app/releases/download/android-test/mana-hoard-test.apk`. Open it on your phone and allow "Install unknown apps" for your browser when asked.
+- **The address bar at the top:** Android only hides it once your website proves it owns the app. GitHub Pages can only do that from your account's root site, so either:
+  - create a repo named **`PaulMarsey.github.io`** containing `.well-known/assetlinks.json` (copy it from `android/assetlinks.json`), or
+  - move the shop to your own domain (e.g. manahoard.co.uk) and put that file at `https://manahoard.co.uk/.well-known/assetlinks.json`, then change `shopHost` and `shopUrl` in `android/app/build.gradle`.
+- **Test key only:** `android/test-signing.keystore` is a committed **test** key so each build installs over the last. Before publishing to Google Play, make a private upload key and keep it out of the repo.
+- **No APK needed:** on Android or iPhone you can also open the shop in Chrome or Safari and choose **Add to Home Screen**. The site includes an app manifest and icon.
 
 ## Upgrade path
 

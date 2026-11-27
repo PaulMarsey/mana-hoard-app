@@ -1,0 +1,43 @@
+name: Build Android test app
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', '.github/workflows/build-android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # to publish the APK on the "android-test" release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build APK
+        run: gradle -p android assembleDebug --no-daemon --stacktrace
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk mana-hoard-test.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mana-hoard-test-apk
+          path: mana-hoard-test.apk
+      - name: Publish to the android-test release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-test
+          name: Mana Hoard — Android test build
+          prerelease: true
+          make_latest: false
+          files: mana-hoard-test.apk
+          body: |
+            Test build of the Mana Hoard app for Android (opens the live shop full-screen).
+            On your phone: download **mana-hoard-test.apk** below, open it, and allow "Install unknown apps" for your browser when asked.
+            Built from ${{ github.sha }}.
