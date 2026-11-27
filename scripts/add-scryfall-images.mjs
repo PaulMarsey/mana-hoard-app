@@ -32,6 +32,9 @@ function applyCard(i, c) {
   const img = sfImg(u.normal) || sfImg(u.large) || sfImg(u.small);
   if (!img) return false;
   i.img = img; if (sfImg(u.large)) i.imgL = u.large;
+  const bf = c.card_faces && c.card_faces[1] && c.card_faces[1].image_uris;
+  const B = bf && (sfImg(bf.normal) || sfImg(bf.large)); if (B) i.imgB = B; else delete i.imgB;
+  i.sfv = 2;
   if (UUID.test(c.id || '')) i.sid = c.id;
   if (/^https:\/\/scryfall\.com\//.test(c.scryfall_uri || '')) i.sfUri = c.scryfall_uri;
   const artist = c.artist || (face && face.artist); if (artist) i.artist = String(artist).slice(0, 80);
@@ -67,7 +70,8 @@ async function lookup(batch, mk) {
 const raw = await readFile(FILE, 'utf8');
 const stock = JSON.parse(raw);
 const items = Array.isArray(stock.items) ? stock.items : [];
-const todo = items.filter(i => i && i.name && isCard(i) && !sfImg(i.img));
+// also re-check cards looked up before back faces were saved (sfv < 2), once
+const todo = items.filter(i => i && i.name && isCard(i) && (!sfImg(i.img) || (i.sfv || 1) < 2));
 if (!todo.length) { console.log('Every card already has a Scryfall image.'); process.exit(0); }
 console.log(`Looking up ${todo.length} card(s) on Scryfall…`);
 let missed = [];
@@ -96,6 +100,7 @@ try {
   console.log(`::warning::Scryfall lookup stopped early: ${e.message}. The site still deploys; cards without images show the drawn frame.`);
 }
 const found = todo.filter(i => sfImg(i.img)).length;
+for (const i of todo) if (sfImg(i.img)) i.sfv = 2; // don't re-check again next deploy
 stock.items = items.map(({ cost, ...r }) => r);
 await writeFile(FILE, JSON.stringify(stock, null, 1) + '\n');
 console.log(`Added images for ${found} of ${todo.length} card(s).`);

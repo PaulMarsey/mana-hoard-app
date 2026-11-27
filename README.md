@@ -11,6 +11,8 @@ It's a plain static site: HTML, CSS and JavaScript with no build step, no server
 | `index.html` | Page shell: header, footer, basket drawer |
 | `styles.css` | All styling. Brand colours are the variables at the top (`--deep`, `--goldf`, `--bg` …) |
 | `app.js` | Shop pages, basket, Hoard Manager, CSV import and pricing |
+| `assets/` | Your Mana Hoard logo (hero, header, footer), favicons and the link-preview image |
+| `lib/art.js` | The illustrated burrow scene and the glowing browsing jars, drawn as SVG |
 | `data/stock.json` | **Your published stock.** This is what customers see. It ships with example stock from *Marvel Super Heroes* (MSH): real card names and collector numbers, with example prices. Replace it with your own |
 | `data/sample-manabox-export.csv` | Example ManaBox export of Marvel Super Heroes cards to practise importing |
 | `.github/workflows/pages.yml` | On every push and daily: TCG PowerTools sync, Scryfall images, save stock, deploy to GitHub Pages |

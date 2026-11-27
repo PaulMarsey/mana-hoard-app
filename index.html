@@ -3,26 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a100d">
+<meta name="theme-color" content="#2a1a10">
 <title>Mana Hoard</title>
 <meta name="description" content="Independent UK retailer for Magic: The Gathering singles, Commander staples, sealed product and accessories.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2230%22 fill=%22%230a100d%22/%3E%3Ctext x=%2250%22 y=%2268%22 font-size=%2256%22 text-anchor=%22middle%22 fill=%22%23e2b25a%22%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:title" content="Mana Hoard — every card has a legend">
+<meta property="og:description" content="Independent UK shop for Magic: The Gathering singles, Commander staples and sealed product.">
+<meta property="og:image" content="assets/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito:wght@400;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 
 </head>
 <body>
 <div class="demo" id="demo">Demonstration mode — checkout and live Scryfall pricing aren't connected yet. Basket requests are sent to the shop to confirm by hand.</div>
 <header class="top"><div class="wrap hrow">
-  <a class="brand" href="#home" aria-label="Mana Hoard home"><span class="mark" aria-hidden="true">✦</span><span><span class="bname">mana hoard</span><span class="btag">Every card has a legend</span></span></a>
+  <a class="brand" href="#home" aria-label="Mana Hoard home"><picture class="blogo"><source srcset="assets/logo-small.webp" type="image/webp"><img src="assets/logo-small.png" alt="" width="160" height="148"></picture><span><span class="bname">mana hoard</span><span class="btag">Every card has a legend</span></span></a>
   <nav class="main" id="nav" aria-label="Main"></nav>
   <button class="btn sm basket-btn" id="openBasket" aria-label="Open basket">Basket <span class="count" id="bcount">0</span></button>
 </div></header>
 <main id="view"></main>
 <footer><div class="wrap fgrid">
-  <div><b>Mana Hoard</b><p>Independent Magic: The Gathering stock for Commander players, collectors and tabletop fans across the UK.</p><p class="small">Contact: <span id="femail"></span></p></div>
+  <div><picture class="flogo"><source srcset="assets/logo-small.webp" type="image/webp"><img src="assets/logo-small.png" alt="Mana Hoard" width="160" height="148" loading="lazy"></picture><p>Independent Magic: The Gathering stock for Commander players, collectors and tabletop fans across the UK.</p><p class="small">Contact: <span id="femail"></span></p></div>
   <div><b>Explore</b><br><a href="#shop">The Hoard</a><br><a href="#commander">Commander</a><br><a href="#tales">Tales from the Hoard</a></div>
   <div><b>Support</b><br><a href="#contact">Contact</a><br><a href="#about">About</a><br><a href="#policies">Policies</a><br><a href="#manager" class="small" style="opacity:.7">Shop admin</a></div>
   <p class="small credits">Card images and data courtesy of <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. Magic: The Gathering, its card names and images are property of Wizards of the Coast. Mana Hoard is an independent shop, not affiliated with or endorsed by Wizards of the Coast or Scryfall.</p>
@@ -45,6 +50,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="lib/powertools.js"></script>
+<script src="lib/art.js"></script>
 <script src="app.js"></script>
 
 </body>
