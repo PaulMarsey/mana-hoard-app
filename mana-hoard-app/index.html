@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mana Hoard</title>
+<meta name="description" content="Independent UK retailer for Magic: The Gathering singles, Commander staples, sealed product and accessories.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2230%22 fill=%22%23173c2b%22/%3E%3Ctext x=%2250%22 y=%2268%22 font-size=%2256%22 text-anchor=%22middle%22 fill=%22%23d8b16d%22%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+<div class="demo" id="demo">Demonstration mode — checkout and live Scryfall pricing aren't connected yet. Basket requests are sent to the shop to confirm by hand.</div>
+<header class="top"><div class="wrap hrow">
+  <a class="brand" href="#home" aria-label="Mana Hoard home"><span class="mark" aria-hidden="true">✦</span><span><span class="bname">mana hoard</span><span class="btag">Every card has a legend</span></span></a>
+  <nav class="main" id="nav" aria-label="Main"></nav>
+  <button class="btn sm basket-btn" id="openBasket" aria-label="Open basket">Basket <span class="count" id="bcount">0</span></button>
+</div></header>
+<main id="view"></main>
+<footer><div class="wrap fgrid">
+  <div><b>Mana Hoard</b><p>Independent Magic: The Gathering stock for Commander players, collectors and tabletop fans across the UK.</p><p class="small">Contact: <span id="femail"></span></p></div>
+  <div><b>Explore</b><br><a href="#shop">The Hoard</a><br><a href="#commander">Commander</a><br><a href="#tales">Tales from the Hoard</a></div>
+  <div><b>Support</b><br><a href="#contact">Contact</a><br><a href="#about">About</a><br><a href="#policies">Policies</a><br><a href="#manager" class="small" style="opacity:.7">Shop admin</a></div>
+</div></footer>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Basket" aria-hidden="true">
+  <div class="dhead row" style="justify-content:space-between"><h2>Your basket</h2><button class="x" style="position:static" id="closeBasket" aria-label="Close basket">×</button></div>
+  <div class="dbody" id="dbody"></div>
+  <div class="dfoot" id="dfoot"></div>
+</aside>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="app.js"></script>
+
+</body>
+</html>
