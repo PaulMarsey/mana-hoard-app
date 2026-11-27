@@ -53,7 +53,7 @@ async function loadStock(env) {
 function shippingOptions(env, subtotal, singles = Infinity) {
   let rates = [];
   try { rates = JSON.parse(env.SHIPPING || '[]'); } catch { rates = []; }
-  if (!rates.length) rates = [{ name: 'Royal Mail 2nd Class', amount: 195, min: 2, max: 4 }, { name: 'Royal Mail Tracked 48', amount: 395, min: 2, max: 3 }];
+  if (!rates.length) rates = [{ name: 'Royal Mail 2nd Class', amount: 195, min: 2, max: 4 }, { name: 'Royal Mail Tracked 48', amount: 395, min: 2, max: 3 }, { name: 'Royal Mail Tracked 24', amount: 450, min: 1, max: 2 }];
   // letter-post style options carry maxCards: only offered when the basket is just a few singles
   rates = rates.filter(r => !(r.maxCards > 0) || singles <= r.maxCards);
   const free = parseInt(env.FREE_SHIP_OVER || '0', 10);

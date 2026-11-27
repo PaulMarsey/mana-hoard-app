@@ -46,7 +46,9 @@ r = await call('/checkout', { items: [{ id: 'msh-1', qty: 1 }] }); assert.equal(
 assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][display_name]'), 'Free Royal Mail 2nd Class');
 assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '0');
 assert.equal(lastSession.get('shipping_options[1][shipping_rate_data][fixed_amount][amount]'), '395');
-console.log('✓ over £30: free 2nd Class, Tracked 48 still £3.95');
+assert.equal(lastSession.get('shipping_options[2][shipping_rate_data][fixed_amount][amount]'), '450');
+assert.equal(lastSession.get('shipping_options[2][shipping_rate_data][display_name]'), 'Royal Mail Tracked 24');
+console.log('✓ over £30: free 2nd Class, Tracked 48 £3.95 and Tracked 24 £4.50 as upgrades');
 // letter post: offered for up to 3 singles only, never alongside free postage
 const env2 = { ...env, SHIPPING: '[{"name":"Royal Mail Letter (untracked, up to 3 cards)","amount":110,"min":2,"max":4,"maxCards":3},{"name":"Royal Mail 2nd Class","amount":195,"min":2,"max":4},{"name":"Royal Mail Tracked 48","amount":395,"min":2,"max":3}]' };
 const saveEnv = { ...env }; Object.assign(env, env2);

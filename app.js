@@ -8,7 +8,7 @@ const CONFIG={
   cardImages:true,                        // show Scryfall card images (false = drawn card frames only)
   // postage shown to shoppers: keep in step with SHIPPING / FREE_SHIP_OVER in checkout-worker/wrangler.toml
   freePostageOver:3000,                   // pence: free postage on baskets of £30+ (0 = off)
-  postage:[{name:'Royal Mail Letter',price:110,days:'2–4 working days, untracked, up to 3 single cards',maxCards:3},{name:'Royal Mail 2nd Class',price:195,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'}],
+  postage:[{name:'Royal Mail Letter',price:110,days:'2–4 working days, untracked, up to 3 single cards',maxCards:3},{name:'Royal Mail 2nd Class',price:195,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'},{name:'Royal Mail Tracked 24',price:450,days:'usually next working day, tracked'}],
   minOrder:200,                           // pence: smallest basket you'll post (0 = off). Keep in step with MIN_ORDER in wrangler.toml
   splash:true,                            // little opening animation when the site or app starts
   dispatchPromise:'Order by 2pm Mon–Fri, posted the same day',
@@ -172,7 +172,7 @@ function pPolicies(){
   return `<section class="wrap shophead"><h1>Policies</h1><p class="muted">Delivery, returns, payments and privacy, in plain English.</p>${B.address?'':'<p class="note" style="margin-top:12px">Draft policies for the test phase: the shop owner still needs to add a business address and check these details before taking real orders.</p>'}</section>
   <section class="wrap policies">
    <article class="box" id="delivery"><h2>Delivery</h2>
-    <ul>${P.map(o=>`<li><b>${esc(o.name)}</b>: ${gbp(o.price)} (${esc(o.days)})</li>`).join('')}${free?`<li><b>Free Royal Mail 2nd Class</b> on orders of ${gbp(free)} or more (Tracked 48 still available as an upgrade).</li>`:''}${CONFIG.minOrder?`<li>Minimum order ${gbp(CONFIG.minOrder)}.</li>`:''}</ul>
+    <ul>${P.map(o=>`<li><b>${esc(o.name)}</b>: ${gbp(o.price)} (${esc(o.days)})</li>`).join('')}${free?`<li><b>Free Royal Mail 2nd Class</b> on orders of ${gbp(free)} or more (Tracked 48 and Tracked 24 still available as upgrades).</li>`:''}${CONFIG.minOrder?`<li>Minimum order ${gbp(CONFIG.minOrder)}.</li>`:''}</ul>
     <p>${CONFIG.dispatchPromise?`${esc(CONFIG.dispatchPromise)}. Orders placed later, at weekends or on bank holidays go out the next working day.`:'We aim to post every order within 1–2 working days.'} You choose your postage at checkout.</p>
     <p>Every single is posted in a penny sleeve and toploader. Letter post goes in a stiffened envelope; everything else goes in a rigid mailer; sealed product is packed so it arrives in the condition it left. We post to UK addresses only for now.</p>
     <p>If your order hasn’t arrived within 10 working days of dispatch, email us at ${em}. We’ll trace it with Royal Mail and send a replacement or a full refund.</p></article>

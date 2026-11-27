@@ -18,7 +18,7 @@ GITHUB_BRANCH = "main"
 # Countries you post to (ISO codes, comma separated), e.g. "GB" or "GB,IE"
 SHIP_COUNTRIES = "GB"
 # Postage options shown at checkout: amount in pence, delivery estimate in working days
-SHIPPING = '[{"name":"Royal Mail Letter (untracked, up to 3 cards)","amount":110,"min":2,"max":4,"maxCards":3},{"name":"Royal Mail 2nd Class","amount":195,"min":2,"max":4},{"name":"Royal Mail Tracked 48","amount":395,"min":2,"max":3}]'
+SHIPPING = '[{"name":"Royal Mail Letter (untracked, up to 3 cards)","amount":110,"min":2,"max":4,"maxCards":3},{"name":"Royal Mail 2nd Class","amount":195,"min":2,"max":4},{"name":"Royal Mail Tracked 48","amount":395,"min":2,"max":3},{"name":"Royal Mail Tracked 24","amount":450,"min":1,"max":2}]'
 # Free 2nd Class postage (cheapest option made free) over this basket total in pence (0 = off). Keep in step with freePostageOver in app.js
 FREE_SHIP_OVER = "3000"
 # Smallest basket (pence) you'll post. Keep in step with minOrder in app.js

@@ -142,7 +142,7 @@ All in the `CONFIG` block at the top of `app.js`:
 - **`freePostageOver`**: free postage threshold in pence (3000 = £30). Keep it the same as `FREE_SHIP_OVER` in `checkout-worker/wrangler.toml`.
 - **`postage`**: the delivery options shown on the Policies page. Keep in step with `SHIPPING` in `wrangler.toml`.
 - **`minOrder`**: smallest basket you'll post, in pence (200 = £2). Below it the basket asks for a little more. Keep in step with `MIN_ORDER` in `wrangler.toml`.
-- **Postage is priced to cover costs:** Letter £1.10 for up to 3 single cards (91p stamp plus envelope and toploader; offered only when the basket has 3 or fewer singles and no sealed product), 2nd Class £1.95 (stamp £1.55 plus packaging and Stripe's cut), Tracked 48 £3.95 (£3.30 plus packaging). Free postage over £30 means free 2nd Class; Tracked stays a paid upgrade.
+- **Postage is priced to cover costs:** Letter £1.10 for up to 3 single cards (91p stamp plus envelope and toploader; offered only when the basket has 3 or fewer singles and no sealed product), 2nd Class £1.95 (stamp £1.55 plus packaging and Stripe's cut), Tracked 48 £3.95 (£3.30 plus packaging), Tracked 24 £4.50 (£3.95 plus packaging). Buy labels through Royal Mail Click & Drop: counter prices are higher. Free postage over £30 means free 2nd Class; Tracked stays a paid upgrade.
 - **`splash`**: the opening animation (logo, glow and sparkles), shown once per visit. Tap to skip; set `false` to turn it off.
 - **`dispatchPromise`** and **`packingPromise`**: the promise lines on the home page, card window and basket.
 - **`reviews`**: paste your Trustpilot and/or Google reviews links. The review buttons (and a "leave a review" note on the thank-you page) only appear once these are filled in.
