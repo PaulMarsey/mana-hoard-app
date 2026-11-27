@@ -8,7 +8,7 @@ const CONFIG={
   cardImages:true,                        // show Scryfall card images (false = drawn card frames only)
   // postage shown to shoppers: keep in step with SHIPPING / FREE_SHIP_OVER in checkout-worker/wrangler.toml
   freePostageOver:3000,                   // pence: free postage on baskets of £30+ (0 = off)
-  postage:[{name:'Royal Mail 2nd Class',price:195,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'}],
+  postage:[{name:'Royal Mail Letter',price:110,days:'2–4 working days, untracked, up to 3 single cards',maxCards:3},{name:'Royal Mail 2nd Class',price:195,days:'2–4 working days'},{name:'Royal Mail Tracked 48',price:395,days:'2–3 working days, tracked'}],
   minOrder:200,                           // pence: smallest basket you'll post (0 = off). Keep in step with MIN_ORDER in wrangler.toml
   splash:true,                            // little opening animation when the site or app starts
   dispatchPromise:'Order by 2pm Mon–Fri, posted the same day',
@@ -102,6 +102,10 @@ function postageBar(sub){
   const f=+CONFIG.freePostageOver||0;if(!f)return '';
   const pct=Math.min(100,Math.round(sub/f*100));
   return `<div class="shipbar${sub>=f?' done':''}"><div class="shiptext">${sub>=f?'<b>You’ve unlocked free 2nd Class postage!</b>':`<b>${gbp(f-sub)}</b> away from free postage`}</div><div class="shiptrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div></div>`}
+function letterHint(lines,sub){
+  const L=(CONFIG.postage||[]).find(p=>p.maxCards>0);if(!L||(CONFIG.freePostageOver&&sub>=CONFIG.freePostageOver))return '';
+  const n=lines.reduce((s,{b,l})=>s+((l.cat==='Sealed'||l.cat==='Accessories')?99:b.qty),0);
+  return n<=L.maxCards?`Just ${n===1?'one card':n+' cards'}? Letter post is ${gbp(L.price)} (untracked). `:''}
 function reviewsBand(){
   const r=CONFIG.reviews||{};if(!r.trustpilotUrl&&!r.googleReviewsUrl)return '';
   return `<section class="band wrap reviews"><div class="box" style="text-align:center;display:grid;gap:10px;justify-items:center"><h2>What adventurers say</h2><p class="muted" style="margin:0">Read honest reviews from people who’ve shopped the hoard, or leave your own.</p><div class="row" style="justify-content:center">${r.trustpilotUrl?`<a class="btn gold" href="${esc(r.trustpilotUrl)}" target="_blank" rel="noopener">Reviews on Trustpilot</a>`:''}${r.googleReviewsUrl?`<a class="btn ghost" href="${esc(r.googleReviewsUrl)}" target="_blank" rel="noopener">Reviews on Google</a>`:''}</div></div></section>`}
@@ -170,7 +174,7 @@ function pPolicies(){
    <article class="box" id="delivery"><h2>Delivery</h2>
     <ul>${P.map(o=>`<li><b>${esc(o.name)}</b>: ${gbp(o.price)} (${esc(o.days)})</li>`).join('')}${free?`<li><b>Free Royal Mail 2nd Class</b> on orders of ${gbp(free)} or more (Tracked 48 still available as an upgrade).</li>`:''}${CONFIG.minOrder?`<li>Minimum order ${gbp(CONFIG.minOrder)}.</li>`:''}</ul>
     <p>${CONFIG.dispatchPromise?`${esc(CONFIG.dispatchPromise)}. Orders placed later, at weekends or on bank holidays go out the next working day.`:'We aim to post every order within 1–2 working days.'} You choose your postage at checkout.</p>
-    <p>Every single is posted in a penny sleeve and toploader inside a rigid mailer; sealed product is packed so it arrives in the condition it left. We post to UK addresses only for now.</p>
+    <p>Every single is posted in a penny sleeve and toploader. Letter post goes in a stiffened envelope; everything else goes in a rigid mailer; sealed product is packed so it arrives in the condition it left. We post to UK addresses only for now.</p>
     <p>If your order hasn’t arrived within 10 working days of dispatch, email us at ${em}. We’ll trace it with Royal Mail and send a replacement or a full refund.</p></article>
    <article class="box" id="returns"><h2>Returns and refunds</h2>
     <p><b>Changed your mind?</b> You can cancel within 14 days of receiving your order: just email ${em}. Send the items back within 14 days of telling us, in the condition you received them, and we’ll refund the item price and the standard postage you paid within 14 days of getting them back. Return postage is yours to pay unless we made a mistake. Sealed product should come back unopened; if it has been opened, we may reduce the refund to reflect the drop in value.</p>
@@ -508,7 +512,7 @@ function renderBasket(){
   const lines=basket.map(b=>({b,l:byId(b.id)})).filter(x=>x.l);const sub=lines.reduce((s,{b,l})=>s+l.price*b.qty,0);
   $('#dbody').innerHTML=lines.length?lines.map(({b,l})=>`<div class="line">${art(l)}<div><b>${esc(l.name)}</b><br><span class="muted small">${esc(l.set)} · ${esc(l.cond)} · ${esc(l.finish)} · ${gbp(l.price)}</span></div>
    <div class="qty"><button data-bq="${esc(b.id)}" data-d="-1" aria-label="One fewer">−</button><span>${b.qty}</span><button data-bq="${esc(b.id)}" data-d="1" aria-label="One more"${b.qty>=l.qty?' disabled':''}>+</button></div></div>`).join(''):'<div class="empty" style="margin-top:20px"><h3>Your basket is empty</h3><p>Find something legendary in the Hoard.</p></div>';
-  $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div>${postageBar(sub)}<p class="muted small" style="margin:0">${CONFIG.dispatchPromise?`<b>${esc(CONFIG.dispatchPromise)}.</b> `:''}${CONFIG.checkoutUrl?'Choose postage at checkout. Got a discount code? Add it on the payment page.':'Send your basket by email and the shop will confirm stock, delivery and payment.'}</p>
+  $('#dfoot').innerHTML=lines.length?`<div class="bar" style="margin:0"><span>Subtotal</span><b class="price">${gbp(sub)}</b></div>${postageBar(sub)}<p class="muted small" style="margin:0">${CONFIG.dispatchPromise?`<b>${esc(CONFIG.dispatchPromise)}.</b> `:''}${letterHint(lines,sub)}${CONFIG.checkoutUrl?'Choose postage at checkout. Got a discount code? Add it on the payment page.':'Send your basket by email and the shop will confirm stock, delivery and payment.'}</p>
    <div><label class="l" for="bnote">Note (optional)</label><input type="text" id="bnote" placeholder="e.g. combine postage with last order" value="${esc(store.get('mh-note',''))}"></div>
    ${sub<(+CONFIG.minOrder||0)?`<p class="note" style="margin:0">Our minimum order is <b>${gbp(CONFIG.minOrder)}</b>: add <b>${gbp(CONFIG.minOrder-sub)}</b> more to check out.</p>`:`${CONFIG.checkoutUrl?`${payButton()}<button class="btn ghost" id="sendReq">Email this order instead</button>`:`<button class="btn gold" id="sendReq">Email this order</button>`}<a class="linkbtn" href="#order" style="text-align:center">View &amp; print order summary</a>`}
    ${CONFIG.checkoutUrl?'':`<p class="muted small" style="margin:0">Or send it to ${esc(CONFIG.shopEmail)}</p>`}`:''}

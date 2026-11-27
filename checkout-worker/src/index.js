@@ -50,13 +50,16 @@ async function loadStock(env) {
   return r.json();
 }
 
-function shippingOptions(env, subtotal) {
+function shippingOptions(env, subtotal, singles = Infinity) {
   let rates = [];
   try { rates = JSON.parse(env.SHIPPING || '[]'); } catch { rates = []; }
   if (!rates.length) rates = [{ name: 'Royal Mail 2nd Class', amount: 195, min: 2, max: 4 }, { name: 'Royal Mail Tracked 48', amount: 395, min: 2, max: 3 }];
+  // letter-post style options carry maxCards: only offered when the basket is just a few singles
+  rates = rates.filter(r => !(r.maxCards > 0) || singles <= r.maxCards);
   const free = parseInt(env.FREE_SHIP_OVER || '0', 10);
   // free postage upgrades the cheapest option (2nd Class) to free; tracked stays a paid upgrade
-  if (free > 0 && subtotal >= free && rates.length) {
+  if (free > 0 && subtotal >= free && rates.some(r => !(r.maxCards > 0))) {
+    rates = rates.filter(r => !(r.maxCards > 0));   // free 2nd Class beats a paid letter
     const cheapest = [...rates].sort((a, b) => a.amount - b.amount)[0];
     rates = [{ ...cheapest, name: 'Free ' + cheapest.name, amount: 0 }, ...rates.filter(r => r !== cheapest)];
   }
@@ -77,11 +80,13 @@ async function createCheckout(req, env) {
   const stock = await loadStock(env);
   const byId = new Map((stock.items || []).map(i => [i.id, i]));
   const lines = [], problems = [];
+  let singles = 0;   // cards that could go by letter; sealed or accessories rule letter post out
   for (const w of want) {
     const it = byId.get(String(w.id));
     const qty = Math.max(1, Math.min(99, parseInt(w.qty, 10) || 1));
     if (!it || !it.live || !(it.price > 0)) { problems.push({ id: w.id, reason: 'no longer available' }); continue; }
     if (it.qty < qty) { problems.push({ id: w.id, name: it.name, reason: it.qty > 0 ? `only ${it.qty} left` : 'sold out', left: it.qty }); continue; }
+    singles += (it.cat === 'Sealed' || it.cat === 'Accessories') ? 99 : qty;
     const foil = /^(foil|etched)/i.test(it.finish || '');
     const desc = [it.setName || it.set, it.num ? `#${it.num}` : '', it.cat === 'Sealed' || it.cat === 'Accessories' ? '' : COND[it.cond] || it.cond, foil ? it.finish : '', it.lang && it.lang !== 'en' ? it.lang.toUpperCase() : ''].filter(Boolean).join(' · ');
     lines.push({
@@ -111,7 +116,7 @@ async function createCheckout(req, env) {
       line_items: lines,
       shipping_address_collection: { allowed_countries: countries },
       allow_promotion_codes: 'true',   // customers can enter codes you create in Stripe → Product catalogue → Coupons
-      shipping_options: shippingOptions(env, subtotal),
+      shipping_options: shippingOptions(env, subtotal, singles),
       phone_number_collection: { enabled: 'false' },
       client_reference_id: ref || undefined,
       metadata: { ref, note: String(body.note || '').slice(0, 450) },

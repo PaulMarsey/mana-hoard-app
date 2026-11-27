@@ -47,6 +47,18 @@ assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][display_na
 assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '0');
 assert.equal(lastSession.get('shipping_options[1][shipping_rate_data][fixed_amount][amount]'), '395');
 console.log('✓ over £30: free 2nd Class, Tracked 48 still £3.95');
+// letter post: offered for up to 3 singles only, never alongside free postage
+const env2 = { ...env, SHIPPING: '[{"name":"Royal Mail Letter (untracked, up to 3 cards)","amount":110,"min":2,"max":4,"maxCards":3},{"name":"Royal Mail 2nd Class","amount":195,"min":2,"max":4},{"name":"Royal Mail Tracked 48","amount":395,"min":2,"max":3}]' };
+const saveEnv = { ...env }; Object.assign(env, env2);
+r = await call('/checkout', { items: [{ id: 'msh-12', qty: 2 }] }); assert.equal(r.status, 200);
+assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '110');
+r = await call('/checkout', { items: [{ id: 'msh-12', qty: 4 }] }); assert.equal(r.status, 200);
+assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][fixed_amount][amount]'), '195', '4 cards: no letter option');
+r = await call('/checkout', { items: [{ id: 'msh-1', qty: 1 }] }); assert.equal(r.status, 200);
+assert.equal(lastSession.get('shipping_options[0][shipping_rate_data][display_name]'), 'Free Royal Mail 2nd Class');
+assert.equal(lastSession.get('shipping_options[2][shipping_rate_data][fixed_amount][amount]'), null, 'letter dropped when postage is free');
+Object.assign(env, saveEnv);
+console.log('✓ letter post £1.10 for up to 3 cards; 2nd Class from 4 cards; free 2nd Class over £30');
 // minimum order
 r = await call('/checkout', { items: [{ id: 'msh-12', qty: 1 }] }); d = await r.json();
 assert.equal(r.status, 400); assert.match(d.error, /minimum order is £2.00/);
