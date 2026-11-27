@@ -20,17 +20,21 @@ jobs:
           node-version: 20
       - name: Test the worker
         run: node checkout-worker/test/worker.test.mjs
-      - name: Deploy to Cloudflare
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: checkout-worker
-          secrets: |
-            STRIPE_SECRET_KEY
-            STRIPE_WEBHOOK_SECRET
-            GITHUB_TOKEN
+      - name: Deploy to Cloudflare and store secrets
+        working-directory: checkout-worker
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          GITHUB_TOKEN: ${{ secrets.STOCK_GITHUB_TOKEN }}
+          STOCK_GITHUB_TOKEN: ${{ secrets.STOCK_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::error::Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets first."; exit 1; fi
+          npx --yes wrangler@4 deploy
+          # only upload the secrets you've added; empty ones are skipped
+          for s in STRIPE_SECRET_KEY STRIPE_WEBHOOK_SECRET; do
+            if [ -n "${!s}" ]; then printf '%s' "${!s}" | npx --yes wrangler@4 secret put "$s"; else echo "::warning::$s not set yet"; fi
+          done
+          if [ -n "$STOCK_GITHUB_TOKEN" ]; then printf '%s' "$STOCK_GITHUB_TOKEN" | npx --yes wrangler@4 secret put GITHUB_TOKEN; else echo "Stock auto-update off (no STOCK_GITHUB_TOKEN)."; fi
+          echo "### Checkout deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Put the workers.dev address shown above into checkoutUrl in app.js, and use <address>/webhook for the Stripe webhook." >> "$GITHUB_STEP_SUMMARY"
