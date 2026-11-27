@@ -90,7 +90,7 @@ function pcard(l){
   <div class="pbody"><h3>${esc(l.name)}</h3>
   <div class="badges"><span class="setcode">${esc(l.set||'—')}</span>${sealed?`<span class="badge">${esc(l.cat)}</span>`:`<span class="cond c-${condTone(l.cond)}" title="${esc(CONDS[l.cond]||l.cond)}">${esc(l.cond)}</span><span class="badge">${esc((l.lang||'en').toUpperCase())}</span>`}${isFoil(l.finish)?`<span class="badge foil">${esc(l.finish)}</span>`:''}</div>
   <div class="prow"><span class="pricewrap">${onSale(l)?`<s class="was">${gbp(l.was)}</s>`:''}<span class="price">${gbp(l.price)}</span></span><span class="stock ${st[0]}">${st[1]}</span></div></div>${onSale(l)?`<span class="salebadge">Sale −${Math.round((1-l.price/l.was)*100)}%</span>`:''}</button>`}
-const isDemoItem=i=>/^msh-\d+$/.test(i.id)||i.id==='msc-deck'||i.id==='acc-sleeves';
+const isDemoItem=i=>/^msh-/.test(i.id)||i.id==='msc-deck'||i.id==='acc-sleeves';
 const onSale=l=>(+l.was||0)>(+l.price||0)&&l.price>0;
 
 /* ---------- promise, postage, reviews ---------- */
