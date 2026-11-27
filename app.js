@@ -90,6 +90,7 @@ function pcard(l){
   <div class="pbody"><h3>${esc(l.name)}</h3>
   <div class="badges"><span class="setcode">${esc(l.set||'—')}</span>${sealed?`<span class="badge">${esc(l.cat)}</span>`:`<span class="cond c-${condTone(l.cond)}" title="${esc(CONDS[l.cond]||l.cond)}">${esc(l.cond)}</span><span class="badge">${esc((l.lang||'en').toUpperCase())}</span>`}${isFoil(l.finish)?`<span class="badge foil">${esc(l.finish)}</span>`:''}</div>
   <div class="prow"><span class="pricewrap">${onSale(l)?`<s class="was">${gbp(l.was)}</s>`:''}<span class="price">${gbp(l.price)}</span></span><span class="stock ${st[0]}">${st[1]}</span></div></div>${onSale(l)?`<span class="salebadge">Sale −${Math.round((1-l.price/l.was)*100)}%</span>`:''}</button>`}
+const isDemoItem=i=>/^msh-\d+$/.test(i.id)||i.id==='msc-deck'||i.id==='acc-sleeves';
 const onSale=l=>(+l.was||0)>(+l.price||0)&&l.price>0;
 
 /* ---------- promise, postage, reviews ---------- */
@@ -306,7 +307,8 @@ function mImport(){
    <p class="muted">In ManaBox, open your collection → Export → CSV, then drop the file here. Moxfield, Deckbox and Cardmarket CSVs with name, set and quantity columns work too.</p>
    <label class="l" for="file">CSV file</label><input type="file" id="file" accept=".csv,text/csv">
    <p class="l" style="margin-top:16px">…or paste the CSV</p><textarea id="paste" placeholder="Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,…"></textarea>
-   <div class="row" style="margin-top:10px"><button class="btn" id="parse">Read CSV</button><button class="btn ghost" id="sample">Try a sample export</button></div></div>
+   <div class="row" style="margin-top:10px"><button class="btn" id="parse">Read CSV</button><button class="btn ghost" id="sample">Try a sample export</button></div>
+   ${S.items.some(isDemoItem)?`<p class="note" style="margin-top:16px">The Hoard still holds the Marvel demo cards. <button class="linkbtn" id="clearDemo">Remove the demo cards</button> before importing your own stock (nothing changes in the live shop until you publish).</p>`:''}</div>
    <div>${p?`<h2>${p.rows.length} listings ready</h2><p class="muted">${p.total} cards from ${p.raw} rows${p.skipped?`, ${p.skipped} rows skipped (no name or quantity)`:''}. Matching cards already in the Hoard get their quantity topped up.</p>
     <div class="tbl" style="max-height:340px"><table><thead><tr><th>Card</th><th>Set</th><th>Finish</th><th>Cond.</th><th class="n">Qty</th><th class="n">Cost</th><th class="n">Price</th></tr></thead><tbody>
     ${p.rows.slice(0,200).map(r=>`<tr><td>${esc(r.name)}</td><td>${esc(r.set)}</td><td>${esc(r.finish)}</td><td>${esc(r.cond)}</td><td class="n">${r.qty}</td><td class="n">${r.cost?gbp(r.cost):'—'}</td><td class="n">${gbp(r.price)}</td></tr>`).join('')}</tbody></table></div>
@@ -740,6 +742,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('button,a')
   if(t.id==='dlExp'){download(t.dataset.name,$('#exptxt').value,'text/csv');return}
   if(t.id==='dlStock'){const at=new Date().toISOString();download('stock.json',stockJSON(at),'application/json');S.basedOn=at;S.stale=false;save();toast('stock.json downloaded — upload it to data/ in your repo');return}
   if(t.id==='cpStock'){toast(await copy(stockJSON())?'JSON copied':'Copy was blocked');return}
+  if(t.id==='clearDemo'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to remove them';return}const n=S.items.length;S.items=S.items.filter(i=>!isDemoItem(i));save();render(false);toast(`${n-S.items.length} demo cards removed`);return}
   if(t.id==='resetWork'||t.id==='resetWork2'){if(!t.dataset.sure){t.dataset.sure=1;t.textContent='Click again to confirm';return}S.items=structuredClone(PUB.items);S.settings=structuredClone(PUB.settings);S.basedOn=PUB.updated;S.stale=false;save();render(false);toast('Working copy reset to the live shop');return}
 });
 $('#scrim').addEventListener('click',()=>{openFilters(false);openDrawer(false)});
